@@ -1,0 +1,587 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Détails du catalogue{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+    }
+
+    .page-header .breadcrumb {
+        background: transparent;
+        margin-bottom: 0;
+        padding: 0;
+    }
+
+    .page-header .breadcrumb-item a {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+    }
+
+    .page-header .breadcrumb-item.active {
+        color: white;
+    }
+
+    .details-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .card-header-custom {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .card-header-custom h3 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .card-header-custom .badge-id {
+        background: rgba(255, 255, 255, 0.3);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .card-body-custom {
+        padding: 0;
+    }
+
+    .detail-section {
+        padding: 2rem;
+    }
+
+    .detail-row {
+        display: flex;
+        padding: 1.25rem;
+        border-bottom: 1px solid #e2e8f0;
+        transition: background-color 0.2s;
+    }
+
+    .detail-row:hover {
+        background-color: #f7fafc;
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        flex: 0 0 200px;
+        font-weight: 600;
+        color: #2d3748;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .detail-label i {
+        color: #4facfe;
+        font-size: 1.1rem;
+    }
+
+    .detail-value {
+        flex: 1;
+        color: #4a5568;
+        font-size: 1rem;
+    }
+
+    .detail-value.empty {
+        color: #a0aec0;
+        font-style: italic;
+    }
+
+    .badge-custom {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-block;
+    }
+
+    .badge-info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+    }
+
+    .badge-success {
+        background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+        color: #155724;
+    }
+
+    .badge-warning {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        color: #856404;
+    }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        padding: 2rem;
+        background: #f7fafc;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        text-align: center;
+        transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card .icon {
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 1rem;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+    }
+
+    .stat-card .label {
+        color: #718096;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-card .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2d3748;
+    }
+
+    .action-buttons {
+        padding: 2rem;
+        background: #f7fafc;
+        border-top: 2px solid #e2e8f0;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: none;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+    .btn-secondary:hover {
+        background: #cbd5e0;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        color: #4a5568;
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: #721c24;
+    }
+
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(250, 112, 154, 0.4);
+        color: #721c24;
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+        color: #155724;
+    }
+
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(132, 250, 176, 0.4);
+        color: #155724;
+    }
+
+    .description-box {
+        background: #f7fafc;
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 4px solid #4facfe;
+        margin-top: 1rem;
+    }
+
+    .description-box p {
+        margin: 0;
+        color: #4a5568;
+        line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+        .detail-row {
+            flex-direction: column;
+        }
+
+        .detail-label {
+            margin-bottom: 0.5rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @media print {
+        .action-buttons,
+        .page-header .breadcrumb {
+            display: none !important;
+        }
+
+        .page-header {
+            background: #4facfe !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-4">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-book-open"></i> Détails du Catalogue</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Accueil</a></li>
+                            <li class="breadcrumb-item"><a href="{{ path('catalogue_list') }}">Catalogues</a></li>
+                            <li class="breadcrumb-item active">Détails #{{ catalogue.id }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button type="button" onclick="window.print()" class="btn btn-light">
+                        <i class="fas fa-print"></i> Imprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-9">
+
+            <!-- Stats Cards -->
+            {% if catalogue.prixAchat or catalogue.prixVente or catalogue.marge %}
+            <div class="row mb-4">
+                {% if catalogue.prixAchat %}
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="label">Prix d'achat</div>
+                        <div class="value">{{ catalogue.prixAchat|number_format(2, ',', ' ') }} MAD</div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if catalogue.prixVente %}
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="icon">
+                            <i class="fas fa-tag"></i>
+                        </div>
+                        <div class="label">Prix de vente</div>
+                        <div class="value">{{ catalogue.prixVente|number_format(2, ',', ' ') }} MAD</div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if catalogue.marge %}
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="label">Marge</div>
+                        <div class="value" style="color: {{ catalogue.marge >= 0 ? '#28a745' : '#dc3545' }}">
+                            {{ catalogue.marge|number_format(2) }}%
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Details Card -->
+            <div class="details-card">
+                <div class="card-header-custom">
+                    <h3>
+                        <i class="fas fa-info-circle"></i>
+                        Informations du Catalogue
+                    </h3>
+                    <span class="badge-id">#{{ catalogue.id }}</span>
+                </div>
+
+                <div class="card-body-custom">
+                    <!-- Informations principales -->
+                    <div class="detail-section">
+                        <div class="detail-row">
+                            <div class="detail-label">
+                                <i class="fas fa-barcode"></i>
+                                Référence
+                            </div>
+                            <div class="detail-value">
+                                {% if catalogue.refecata %}
+                                    <span class="badge-custom badge-info">{{ catalogue.refecata }}</span>
+                                {% else %}
+                                    <span class="empty">Non renseignée</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="detail-row">
+                            <div class="detail-label">
+                                <i class="fas fa-signature"></i>
+                                Nom du catalogue
+                            </div>
+                            <div class="detail-value">
+                                <strong>{{ catalogue.designation }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="detail-row">
+                            <div class="detail-label">
+                                <i class="fas fa-tag"></i>
+                                Type
+                            </div>
+                            <div class="detail-value">
+                                {% if catalogue.typecata %}
+                                    <span class="badge-custom badge-success">{{ catalogue.typecata }}</span>
+                                {% else %}
+                                    <span class="empty">Non renseigné</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="detail-row">
+                            <div class="detail-label">
+                                <i class="fas fa-toggle-on"></i>
+                                État
+                            </div>
+                            <div class="detail-value">
+                                {% if catalogue.etat %}
+                                    <span class="badge-custom badge-warning">{{ catalogue.etat }}</span>
+                                {% else %}
+                                    <span class="empty">Non renseigné</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if catalogue.codebarr %}
+                        <div class="detail-row">
+                            <div class="detail-label">
+                                <i class="fas fa-qrcode"></i>
+                                Code-barres
+                            </div>
+                            <div class="detail-value">
+                                {{ catalogue.codebarr }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if catalogue.uniteMesure %}
+                        <div class="detail-row">
+                            <div class="detail-label">
+                                <i class="fas fa-balance-scale"></i>
+                                Unité de mesure
+                            </div>
+                            <div class="detail-value">
+                                {{ catalogue.uniteMesure }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="detail-row">
+                            <div class="detail-label">
+                                <i class="fas fa-shopping-cart"></i>
+                                État Achat
+                            </div>
+                            <div class="detail-value">
+                                {% if catalogue.etatAchat %}
+                                    <span class="badge-custom badge-success">
+                                        <i class="fas fa-check"></i> Activé
+                                    </span>
+                                {% else %}
+                                    <span class="badge-custom" style="background: #f8d7da; color: #721c24;">
+                                        <i class="fas fa-times"></i> Désactivé
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="detail-row">
+                            <div class="detail-label">
+                                <i class="fas fa-cash-register"></i>
+                                État Vente
+                            </div>
+                            <div class="detail-value">
+                                {% if catalogue.etatVente %}
+                                    <span class="badge-custom badge-success">
+                                        <i class="fas fa-check"></i> Activé
+                                    </span>
+                                {% else %}
+                                    <span class="badge-custom" style="background: #f8d7da; color: #721c24;">
+                                        <i class="fas fa-times"></i> Désactivé
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="detail-row">
+                            <div class="detail-label">
+                                <i class="fas fa-calendar-alt"></i>
+                                Date de création
+                            </div>
+                            <div class="detail-value">
+                                {% if catalogue.dateCrea %}
+                                    {{ catalogue.dateCrea|date('d/m/Y à H:i') }}
+                                {% else %}
+                                    <span class="empty">Non renseignée</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="detail-row">
+                            <div class="detail-label">
+                                <i class="fas fa-align-left"></i>
+                                Description
+                            </div>
+                            <div class="detail-value">
+                                {% if catalogue.description %}
+                                    <div class="description-box">
+                                        <p>{{ catalogue.description }}</p>
+                                    </div>
+                                {% else %}
+                                    <span class="empty">Aucune description disponible</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-buttons">
+                        <a href="{{ path('catalogue_list') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour à la liste
+                        </a>
+                        <a href="{{ path('catalogue_edit', { id: catalogue.id }) }}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Modifier
+                        </a>
+                        <button type="button" class="btn btn-success" onclick="duplicateCatalogue()">
+                            <i class="fas fa-copy"></i> Dupliquer
+                        </button>
+                        <button type="button" class="btn btn-danger ms-auto" onclick="confirmDelete()">
+                            <i class="fas fa-trash"></i> Supprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+    function confirmDelete() {
+        if (confirm('⚠️ Êtes-vous sûr de vouloir supprimer ce catalogue ?\n\nCette action est irréversible.')) {
+            fetch('/catalogue/{{ catalogue.id }}/delete', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = '{{ path('catalogue_list') }}';
+                } else {
+                    alert('❌ Erreur lors de la suppression');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Erreur lors de la suppression');
+            });
+        }
+    }
+
+    function duplicateCatalogue() {
+        if (confirm('Voulez-vous créer une copie de ce catalogue ?')) {
+            // Ajoutez ici votre logique de duplication
+            alert('Fonctionnalité de duplication à implémenter');
+        }
+    }
+</script>
+{% endblock %}

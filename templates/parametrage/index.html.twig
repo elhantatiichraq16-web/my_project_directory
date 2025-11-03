@@ -1,0 +1,11 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Paramétrage{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+{% endblock %}
+
+{% block body %}
+    {% include 'parametrage/_content.html.twig' with { modules: modules, form_id: 'parametrage-form-main' } %}
+{% endblock %}

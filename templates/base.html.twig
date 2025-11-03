@@ -1,17 +1,319 @@
+{# templates/base.html.twig #}
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
-        {% block stylesheets %}
-        {% endblock %}
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Mon Application{% endblock %}</title>
 
-        {% block javascripts %}
-            {% block importmap %}{{ importmap('app') }}{% endblock %}
-        {% endblock %}
-    </head>
-    <body>
+    {# Bootstrap CSS #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+    {# DataTables CSS #}
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    {# FontAwesome & Bootstrap Icons #}
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer" />
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    {# Toastr CSS #}
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css"
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer" />
+
+    <style>
+        body {
+            background-color: #f5f7fb;
+            font-family: "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 220px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: linear-gradient(180deg, #0d6efd, #0b5ed7);
+            color: #fff;
+            padding-top: 20px;
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed {
+            width: 70px;
+        }
+
+        .sidebar h2 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: bold;
+            font-size: 22px;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar.collapsed h2 {
+            opacity: 0;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 15px;
+        }
+
+        .sidebar-menu li a {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            transition: 0.3s;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .sidebar-menu li a:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            padding-left: 25px;
+        }
+
+        .sidebar-menu li.active a {
+            background-color: rgba(255, 255, 255, 0.25);
+            font-weight: bold;
+            padding-left: 25px;
+        }
+
+        .sidebar-menu li a i {
+            margin-right: 10px;
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar.collapsed li a span {
+            display: none;
+        }
+
+        .toggle-btn {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            cursor: pointer;
+            font-size: 20px;
+            color: #fff;
+        }
+
+        /* Main content */
+        .main-content {
+            margin-left: 220px;
+            padding: 40px;
+            min-height: 100vh;
+            background-color: #f5f7fb;
+            transition: margin-left 0.3s;
+        }
+
+        .sidebar.collapsed ~ .main-content {
+            margin-left: 70px;
+        }
+
+        /* Flash messages */
+        .alert {
+            margin-bottom: 20px;
+        }
+
+        /* Floating Settings Button */
+        .btn-floating-settings {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, #0d6efd, #6610f2);
+            box-shadow: 0 12px 24px rgba(13, 110, 253, 0.35);
+            color: #fff;
+            cursor: grab;
+            transform: translate3d(0, 0, 0);
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+            z-index: 1055;
+            user-select: none;
+        }
+
+        .btn-floating-settings:hover,
+        .btn-floating-settings:focus {
+            transform: translate3d(-6px, -10px, 0) scale(1.07);
+            box-shadow: 0 20px 36px rgba(102, 16, 242, 0.45);
+        }
+
+        .btn-floating-settings.is-dragging {
+            transition: none;
+            transform: translate3d(0, 0, 0);
+            box-shadow: 0 18px 28px rgba(13, 110, 253, 0.45);
+        }
+    </style>
+
+    {% block stylesheets %}{% endblock %}
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <h2>Mon Dashboard</h2>
+        <ul class="sidebar-menu list-unstyled">
+            <li class="active"><a href="{{ path('app_dashboard') }}"><i class="bi bi-speedometer2"></i> <span>Tableau de bord</span></a></li>
+            <li><a href="{{ path('app_utilisateur_list') }}"><i class="bi bi-people"></i> <span>Utilisateurs</span></a></li>
+            <li><a href="{{ path('app_clients_list') }}"><i class="bi bi-person-lines-fill"></i> <span>Tiers</span></a></li>
+            <li><a href="{{ path('catalogue_list') }}"><i class="bi bi-box-seam"></i> <span>Catalogues</span></a></li>
+            <li><a href="{{ path('app_facture_create') }}"><i class="bi bi-file-earmark-plus"></i> <span>Créer une facture</span></a></li>
+            <li><a href="{{ path('app_parametrage_index') }}"><i class="bi bi-gear"></i> <span>Paramétrage</span></a></li>
+        </ul>
+        <div class="toggle-btn" onclick="toggleSidebar()">
+            <i class="bi bi-chevron-left"></i>
+        </div>
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="main-content">
+        {% for msg in app.flashes('error') %}
+            <div class="alert alert-danger">{{ msg }}</div>
+        {% endfor %}
+        {% for msg in app.flashes('success') %}
+            <div class="alert alert-success">{{ msg }}</div>
+        {% endfor %}
         {% block body %}{% endblock %}
-    </body>
+    </div>
+
+    <!-- Floating Settings Button -->
+    <button type="button" id="floating-settings-button"
+            class="btn btn-primary btn-floating-settings"
+            data-bs-toggle="modal"
+            data-bs-target="#modal-parametrage-ventes"
+            aria-label="Ouvrir le paramétrage des ventes">⚙️
+    </button>
+
+    <!-- Modal -->
+    <div class="modal fade" id="modal-parametrage-ventes" tabindex="-1" aria-labelledby="modalParametrageVentesLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalParametrageVentesLabel">Paramétrage des ventes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="parametrage-fragment" data-fragment-url="{{ path('app_parametrage_fragment') }}">
+                        <div class="d-flex justify-content-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Chargement...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Scripts JS (sans intégrité) #}
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('#usersTable, #cataloguesTable').DataTable({
+                dom: 'Bfrtip',
+                buttons: ['copy', 'excel', 'print'],
+                pageLength: 10,
+                language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json" }
+            });
+
+            const floatingButton = document.getElementById('floating-settings-button');
+            if (floatingButton) enableFloatingButtonDrag(floatingButton);
+
+            const parametrageModal = document.getElementById('modal-parametrage-ventes');
+            if (parametrageModal) {
+                parametrageModal.addEventListener('show.bs.modal', () => {
+                    const container = document.getElementById('parametrage-fragment');
+                    if (!container || container.dataset.loaded === 'true') return;
+
+                    fetch(container.dataset.fragmentUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                        .then(r => r.text())
+                        .then(html => { container.innerHTML = html; container.dataset.loaded = 'true'; })
+                        .catch(() => container.innerHTML = '<div class="alert alert-danger">Erreur de chargement du paramétrage.</div>');
+                });
+            }
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            const icon = sidebar.querySelector('.toggle-btn i');
+            icon.classList.toggle('bi-chevron-left');
+            icon.classList.toggle('bi-chevron-right');
+        }
+
+        function enableFloatingButtonDrag(button) {
+            let isDragging = false, startX = 0, startY = 0, initialX = 0, initialY = 0;
+            const savePosition = () => localStorage.setItem('floatingSettingsButtonPosition', JSON.stringify({
+                bottom: parseFloat(button.style.bottom) || 32,
+                right: parseFloat(button.style.right) || 32
+            }));
+            const loadPosition = () => {
+                const pos = JSON.parse(localStorage.getItem('floatingSettingsButtonPosition') || '{}');
+                if (pos.bottom && pos.right) {
+                    button.style.bottom = `${pos.bottom}px`;
+                    button.style.right = `${pos.right}px`;
+                }
+            };
+            button.addEventListener('pointerdown', e => {
+                isDragging = true; startX = e.clientX; startY = e.clientY;
+                const r = button.getBoundingClientRect();
+                initialX = r.right; initialY = window.innerHeight - r.bottom;
+                button.classList.add('is-dragging');
+            });
+            button.addEventListener('pointermove', e => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX, dy = e.clientY - startY;
+                let nr = initialX - dx, nb = initialY + dy;
+                button.style.right = `${Math.min(Math.max(nr, 16), window.innerWidth - button.offsetWidth - 16)}px`;
+                button.style.bottom = `${Math.min(Math.max(nb, 16), window.innerHeight - button.offsetHeight - 16)}px`;
+            });
+            button.addEventListener('pointerup', () => { isDragging = false; button.classList.remove('is-dragging'); savePosition(); });
+            loadPosition();
+        }
+    </script>
+
+    {% block javascripts %}{% endblock %}
+</body>
 </html>
+
+

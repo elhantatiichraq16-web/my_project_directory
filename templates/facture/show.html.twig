@@ -1,0 +1,177 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Facture {{ facture.reference }}{% endblock %}
+
+{% block activeFacture %}class="active"{% endblock %}
+{% block activeVentes2 %}show-m{% endblock %}
+
+{% block body %}
+<div class="page-content">
+    <div class="container-fluid">
+        <div class="row justify-content-md-center mb-2 d-flex align-items-center">
+            <div class="col-md-6">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ path('app_factures_list') }}"><i class="fa-solid fa-house"></i></a></li>
+                        <li class="breadcrumb-item"><a href="{{ path('app_factures_list') }}">Factures</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Facture {{ facture.reference }}</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="col-md-6 text-end">
+                <a href="{{ path('app_facture_edit', { id: facture.id }) }}" class="btn btn-warning">
+                    <i class="fa-regular fa-pen-to-square"></i> Modifier
+                </a>
+                <a href="{{ path('app_facture_pdf', { id: facture.id }) }}" class="btn btn-primary">
+                    <i class="fa-solid fa-file-pdf"></i> Télécharger PDF
+                </a>
+                <a href="{{ path('app_factures_list') }}" class="btn btn-light">
+                    <i class="fa-solid fa-chevron-left"></i> Retour
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white">
+                <h3 class="card-title">Informations de la facture</h3>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5 class="text-muted">Référence</h5>
+                        <p class="fs-5">{{ facture.reference }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="text-muted">Client</h5>
+                        <p class="fs-5">{{ facture.tier ? facture.tier.nom : '—' }}</p>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Date de création</h6>
+                        <p>{{ facture.dateCreation ? facture.dateCreation|date('d/m/Y') : '—' }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Date d'échéance</h6>
+                        <p>{{ facture.dateEcheance ? facture.dateEcheance|date('d/m/Y') : '—' }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Dernière modification</h6>
+                        <p>{{ facture.dateModification ? facture.dateModification|date('d/m/Y H:i') : '—' }}</p>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Devise</h6>
+                        <p>{{ facture.devise ?? 'MAD' }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">État</h6>
+                        <span class="badge bg-info">{{ facture.etat }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">Remise globale</h6>
+                        <p>{{ facture.remiseGlobale ?? 0 }}%</p>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted">Objet</h6>
+                    <p>{{ facture.objet ?? '—' }}</p>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted">Notes</h6>
+                    <p>{{ facture.notes ? facture.notes|nl2br : '—' }}</p>
+                </div>
+
+                {% if showRetenueSource %}
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Retenue à la source</h6>
+                            <p>{{ facture.retenueSource is not null ? facture.retenueSource|number_format(2, ',', ' ') ~ ' %' : '—' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Retenue de garantie</h6>
+                            <p>{{ facture.retenueGarantie is not null ? facture.retenueGarantie|number_format(2, ',', ' ') ~ ' %' : '—' }}</p>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="table-responsive">
+    <table class="table table-bordered">
+        <thead class="table-light">
+            <tr>
+                <th>#</th>
+                <th>Référence</th>
+                <th>Produit</th>
+                <th>Description</th>
+                <th>Unité</th>
+                <th class="text-end">Quantité</th>
+                <th class="text-end">Prix HT</th>
+                <th class="text-end">Remise (%)</th>
+                <th class="text-end">TVA (%)</th>
+                <th class="text-end">Total HT</th>
+                <th class="text-end">Total TVA</th>
+                <th class="text-end">Total TTC</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ligne in lignes %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ ligne.reference }}</td>
+                    <td>{{ ligne.produit }}</td>
+                    <td>{{ ligne.description }}</td>
+                    <td>{{ ligne.unite }}</td>
+                    <td class="text-end">{{ ligne.quantite|number_format(2, ',', ' ') }}</td>
+                    <td class="text-end">{{ ligne.prix_ht|number_format(2, ',', ' ') }}</td>
+                    <td class="text-end">{{ ligne.remise|number_format(2, ',', ' ') }}</td>
+                    <td class="text-end">{{ ligne.tva|number_format(2, ',', ' ') }}</td>
+                    <td class="text-end">{{ ligne.total_ht|number_format(2, ',', ' ') }}</td>
+                    <td class="text-end">{{ ligne.total_tva|number_format(2, ',', ' ') }}</td>
+                    <td class="text-end">{{ ligne.total_ttc|number_format(2, ',', ' ') }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="12" class="text-center text-muted">Aucune ligne trouvée</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot class="table-light">
+            <tr class="fw-bold">
+                <td colspan="9" class="text-end">Totaux :</td>
+                <td class="text-end">{{ totaux.total_ht|number_format(2, ',', ' ') }}</td>
+                <td class="text-end">{{ totaux.total_tva|number_format(2, ',', ' ') }}</td>
+                <td class="text-end">{{ totaux.total_ttc|number_format(2, ',', ' ') }}</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+
+                <div class="row justify-content-end">
+                    <div class="col-md-4">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th>Total HT :</th>
+                                <td class="text-end">{{ (facture.lignes|reduce((carry, ligne) => carry + (ligne.quantite * ligne.prixHt), 0))|number_format(2, ',', ' ') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Total TVA :</th>
+                                <td class="text-end">{{ (facture.lignes|reduce((carry, ligne) => carry + (ligne.quantite * ligne.prixHt * (ligne.tva / 100)), 0))|number_format(2, ',', ' ') }}</td>
+                            </tr>
+                            <tr class="table-active">
+                                <th>Total TTC :</th>
+                                <td class="text-end">{{ (facture.lignes|reduce((carry, ligne) => carry + ligne.totalTtc, 0))|number_format(2, ',', ' ') }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

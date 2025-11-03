@@ -1,0 +1,156 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Nouvelle facture{% endblock %}
+
+{% block activeFacture %}class="active"{% endblock %}
+{% block activeVentes2 %}show-m{% endblock %}
+
+{% block body %}
+<style>
+    label { font-weight: bold; display: block; margin-bottom: 5px; }
+    input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; vertical-align: top; }
+    th { background-color: #1a3654ff; color: white; }
+    #table_produits td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #1a3654ff;
+        margin-bottom: 4px;
+        text-align: left;
+    }
+    .btn { display: inline-block; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+    .btn-info { background-color: #203c58ff; color: white; border: none; }
+    .btn-secondary { background-color: #6c757d; color: white; border: none; }
+    .btn-outline-primary { background-color: transparent; border: 1px solid #243d58ff; color: #233a52ff; }
+</style>
+
+<div class="page-content">
+    <div class="container-fluid">
+        <form id="form_facture" method="POST" action="{{ path('app_facture_create') }}">
+            <div class="row justify-content-md-center mb-2 d-flex align-items-center">
+                <div class="col-md-6">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="#"><i class="fa-solid fa-house"></i></a></li>
+                            <li class="breadcrumb-item"><a href="#">Ventes</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Nouvelle facture</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button type="button" id="addLigne" class="btn btn-info"><i class="fa-regular fa-floppy-disk"></i> Ajouter produit</button>
+                    <button type="submit" class="btn btn-secondary"><i class="far fa-window-close"></i> Enregistrer</button>
+                </div>
+            </div>
+
+            <!-- Table des produits -->
+            <table id="table_produits">
+                <thead>
+                    <tr>
+                        <th>Référence</th>
+                        <th>Produit</th>
+                        <th>Quantité</th>
+                        <th>Prix HT</th>
+                        <th>Remise (%)</th>
+                        <th>TVA (%)</th>
+                        <th>Total TTC</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <div class="mt-3">
+                <label>Total HT :</label>
+                <input type="text" name="total_ht" readonly>
+                <label>Total TVA :</label>
+                <input type="text" name="total_tva" readonly>
+                <label>Total TTC :</label>
+                <input type="text" name="total_ttc" readonly>
+            </div>
+<input type="hidden" name="_csrf_token" value="{{ csrf_token('add_facture') }}">
+
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tableBody = document.querySelector('#table_produits tbody');
+
+    // Fonction pour recalculer totaux
+    function calculateTotals() {
+        let totalHT = 0, totalTVA = 0;
+        tableBody.querySelectorAll('tr').forEach(tr => {
+            const q = parseFloat(tr.querySelector('[name*="[quantite]"]').value) || 0;
+            const prix = parseFloat(tr.querySelector('[name*="[prix_ht]"]').value) || 0;
+            const remise = parseFloat(tr.querySelector('[name*="[remise]"]').value) || 0;
+            const tva = parseFloat(tr.querySelector('[name*="[tva]"]').value) || 0;
+            const montantHT = q * prix * (1 - Math.min(Math.max(remise, 0), 100) / 100);
+            const montantTVA = montantHT * tva / 100;
+            const ttc = montantHT + montantTVA;
+            tr.querySelector('[name*="[total_ttc]"]').value = ttc.toFixed(2);
+            totalHT += montantHT;
+            totalTVA += montantTVA;
+        });
+        document.querySelector('[name="total_ht"]').value = totalHT.toFixed(2);
+        document.querySelector('[name="total_tva"]').value = totalTVA.toFixed(2);
+        document.querySelector('[name="total_ttc"]').value = (totalHT + totalTVA).toFixed(2);
+    }
+
+    // Ajouter une ligne
+    document.getElementById('addLigne').addEventListener('click', function() {
+        const rowCount = tableBody.querySelectorAll('tr').length;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td data-label="Référence">
+                <input type="text" name="produits[${rowCount}][reference]">
+            </td>
+            <td data-label="Produit">
+                <input type="text" name="produits[${rowCount}][nom]">
+            </td>
+            <td data-label="Quantité">
+                <input type="number" name="produits[${rowCount}][quantite]" value="1" min="1">
+            </td>
+            <td data-label="Prix HT">
+                <input type="number" name="produits[${rowCount}][prix_ht]" value="0" step="0.01">
+            </td>
+            <td data-label="Remise (%)">
+                <input type="number" name="produits[${rowCount}][remise]" value="0" step="0.01" min="0" max="100">
+            </td>
+            <td data-label="TVA (%)">
+                <input type="number" name="produits[${rowCount}][tva]" value="20" step="0.01" min="0">
+            </td>
+            <td data-label="Total TTC">
+                <input type="number" name="produits[${rowCount}][total_ttc]" value="0" step="0.01" readonly>
+            </td>
+            <td data-label="Action">
+                <button type="button" class="btn btn-secondary btn-sm deleteLigne">Supprimer</button>
+            </td>
+        `;
+        tableBody.appendChild(tr);
+        calculateTotals();
+    });
+
+    // Supprimer une ligne
+    tableBody.addEventListener('click', e => {
+        if(e.target.classList.contains('deleteLigne')){
+            e.target.closest('tr').remove();
+            calculateTotals();
+        }
+    });
+
+    // Recalcul automatique
+    tableBody.addEventListener('input', e => {
+        if(['quantite','prix_ht','tva','remise'].some(n => e.target.name.includes(n))) {
+            calculateTotals();
+        }
+    });
+});
+</script>
+{% endblock %}

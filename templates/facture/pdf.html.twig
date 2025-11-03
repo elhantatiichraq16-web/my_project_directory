@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Facture {{ facture.reference }}</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #333;
+            font-size: 12px;
+            margin: 0;
+            padding: 10px;
+        }
+        .container {
+            width: 100%;
+            margin: 0 auto;
+        }
+        .header {
+            margin-bottom: 30px;
+        }
+        .footer {
+            font-size: 10px;
+            color: #777;
+            margin-top: 30px;
+            text-align: center;
+        }
+        .content {
+            margin-bottom: 50px;
+        }
+        h1 {
+            font-size: 24px;
+            color: #007bff;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin: 0 0 20px 0;
+        }
+        .invoice-details {
+            margin-bottom: 20px;
+        }
+        .invoice-details p {
+            margin: 5px 0;
+        }
+        .invoice-details .label {
+            font-weight: bold;
+        }
+        .client-info {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .items-table th, .items-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        .items-table th {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+        .items-table td {
+            text-align: left;
+        }
+        .items-table td.numeric {
+            text-align: right;
+        }
+        .items-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .totals {
+            margin-top: 30px;
+            margin-left: auto;
+            width: 40%;
+            float: right;
+        }
+        .totals table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .totals td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        .totals .label {
+            font-weight: bold;
+            background-color: #f0f0f0;
+        }
+        .totals .value {
+            text-align: right;
+        }
+        .totals .total-ht { background-color: #f9f9f9; }
+        .totals .total-tva { background-color: #f9f9f9; }
+        .totals .total-ttc { 
+            background-color: #e7f3ff; 
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .clear {
+            clear: both;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Facture N° {{ facture.reference }}</h1>
+        </div>
+
+        <div class="content">
+            <div class="invoice-details">
+                <p><span class="label">Date :</span> {{ facture.dateCreation|date('d/m/Y') }}</p>
+                <p><span class="label">Client :</span> {{ facture.tier.nom }}</p>
+                <p><span class="label">Objet :</span> {{ facture.objet }}</p>
+                {% if facture.dateEcheance %}
+                <p><span class="label">Date d'échéance :</span> {{ facture.dateEcheance|date('d/m/Y') }}</p>
+                {% endif %}
+                <p><span class="label">État :</span> {{ facture.etat }}</p>
+            </div>
+
+            {% if showRetenueSource %}
+            <div class="invoice-details" style="margin-top: 15px;">
+                <p><span class="label">Retenue à la source :</span> {{ facture.retenueSource is not null ? facture.retenueSource|number_format(2, ',', ' ') ~ ' %' : '—' }}</p>
+                <p><span class="label">Retenue de garantie :</span> {{ facture.retenueGarantie is not null ? facture.retenueGarantie|number_format(2, ',', ' ') ~ ' %' : '—' }}</p>
+            </div>
+            {% endif %}
+
+            {% if facture.lignes|length > 0 %}
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 30%">Produit</th>
+                        <th style="width: 15%" class="numeric">Quantité</th>
+                        <th style="width: 15%" class="numeric">Prix HT</th>
+                        <th style="width: 10%" class="numeric">TVA %</th>
+                        <th style="width: 20%" class="numeric">Total TTC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set totalHT = 0 %}
+                    {% set totalTVA = 0 %}
+                    {% set totalTTC = 0 %}
+                    {% for ligne in facture.lignes %}
+                        {% set prixHT = ligne.quantite * ligne.prixHt %}
+                        {% set montantTVA = prixHT * (ligne.tva / 100) %}
+                        {% set montantTTC = prixHT + montantTVA %}
+                        {% set totalHT = totalHT + prixHT %}
+                        {% set totalTVA = totalTVA + montantTVA %}
+                        {% set totalTTC = totalTTC + montantTTC %}
+                        <tr>
+                            <td>{{ ligne.produit }}</td>
+                            <td class="numeric">{{ ligne.quantite }}</td>
+                            <td class="numeric">{{ ligne.prixHt|number_format(2, ',', ' ') }} {{ facture.devise }}</td>
+                            <td class="numeric">{{ ligne.tva }}%</td>
+                            <td class="numeric">{{ montantTTC|number_format(2, ',', ' ') }} {{ facture.devise }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="totals">
+                <table>
+                    <tr class="total-ht">
+                        <td class="label">Total HT :</td>
+                        <td class="value">{{ totalHT|number_format(2, ',', ' ') }} {{ facture.devise }}</td>
+                    </tr>
+                    <tr class="total-tva">
+                        <td class="label">Total TVA :</td>
+                        <td class="value">{{ totalTVA|number_format(2, ',', ' ') }} {{ facture.devise }}</td>
+                    </tr>
+                    <tr class="total-ttc">
+                        <td class="label">Total TTC :</td>
+                        <td class="value">{{ totalTTC|number_format(2, ',', ' ') }} {{ facture.devise }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="clear"></div>
+            {% endif %}
+
+            {% if facture.notes %}
+            <div style="margin-top: 30px; padding-top: 10px; border-top: 1px solid #ddd;">
+                <p><strong>Notes :</strong></p>
+                <p>{{ facture.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p>Document généré automatiquement - {{ "now"|date('d/m/Y H:i') }}</p>
+        </div>
+    </div>
+</body>
+</html>

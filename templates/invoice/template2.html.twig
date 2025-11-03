@@ -1,0 +1,19 @@
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+<style>
+.invoice-card { background:linear-gradient(180deg,#f7fbff,#fff);padding:22px;border-radius:8px;border:1px solid #e7f0ff; }
+.document-header h4 { color:#0d6efd; }
+.table thead th { background:#e9f2ff;color:#0d6efd;border:0; }
+.company-info { border-left:4px solid #0d6efd; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container py-4">
+  <div class="invoice-card">
+    {% include 'invoice/_invoice_core.html.twig' %}
+  </div>
+</div>
+{% endblock %}
