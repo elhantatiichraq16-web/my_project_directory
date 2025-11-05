@@ -42,6 +42,9 @@
                 <button type="button" id="import-btn" class="btn btn-success">
                     <i class="fas fa-upload"></i> Importer
                 </button>
+                <button type="button" id="email-history-btn" class="btn btn-outline-info">
+    <i class="fas fa-history"></i> Historique emails
+</button>
                 <a href="{{ path('app_facture') }}" id="retour" class="btn btn-light">
                     <i class="fas fa-chevron-left"></i> Retour
                 </a>
@@ -449,28 +452,37 @@
                         filter: false,
                         suppressMenu: true,
                         valueGetter: params => params.data?.id ?? params.data?.Actions ?? params.value,
-                        cellRenderer: params => {
-                            const rawId = params.value ?? params.data?.id ?? params.data?.Actions;
-                            if (!rawId) {
-                                return '';
-                            }
+cellRenderer: params => {
+    const rawId = params.value ?? params.data?.id ?? params.data?.Actions;
+    if (!rawId) {
+        return '';
+    }
 
-                            const safeId = escapeHtml(String(rawId));
-                            const showUrl = `/facture/${safeId}`;
-                            const editUrl = `/facture/${safeId}/edit`;
+    const safeId = escapeHtml(String(rawId));
+    const safeRef = escapeHtml(params.data?.reference || '');
+    const showUrl = `/facture/${safeId}`;
+    const editUrl = `/facture/${safeId}/edit`;
 
-                            return `
-                                <a href="${showUrl}" class="btn btn-sm btn-outline-info me-2">
-                                    <i class="fa-regular fa-eye"></i>
-                                </a>
-                                <a href="${editUrl}" class="btn btn-sm btn-outline-warning me-2">
-                                    <i class="fa-regular fa-pen-to-square"></i>
-                                </a>
-                                <button type="button" class="btn btn-sm btn-outline-danger delete-invoice-btn" data-id="${safeId}">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            `;
-                        }
+    return `
+        <a href="${showUrl}" class="btn btn-sm btn-outline-info me-2">
+            <i class="fa-regular fa-eye"></i>
+        </a>
+        <a href="${editUrl}" class="btn btn-sm btn-outline-warning me-2">
+            <i class="fa-regular fa-pen-to-square"></i>
+        </a>
+        <button type="button" class="btn btn-sm btn-outline-primary me-2 send-email-btn" 
+                data-id="${safeId}" data-reference="${safeRef}" title="Envoyer par email">
+            <i class="fa-solid fa-envelope"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary me-2 email-history-btn" 
+                data-id="${safeId}" data-reference="${safeRef}" title="Historique des emails">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger delete-invoice-btn" data-id="${safeId}">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+    `;
+}
                     }
                 ],
                 defaultColDef: { 
@@ -538,6 +550,25 @@
                     deleteInvoices([{ id: Number(invoiceId) }], false);
                 }
             });
+// Email buttons
+document.addEventListener('click', e => {
+    if (e.target.closest('.send-email-btn')) {
+        const btn = e.target.closest('.send-email-btn');
+        openEmailModal(btn.dataset.id, btn.dataset.reference);
+    }
+    
+    if (e.target.closest('.email-history-btn')) {
+        const btn = e.target.closest('.email-history-btn');
+        openEmailHistoryModal(btn.dataset.id, btn.dataset.reference);
+    }
+    
+    if (e.target.closest('.view-email-detail-btn')) {
+        const btn = e.target.closest('.view-email-detail-btn');
+        viewEmailDetail(btn.dataset.emailId);
+    }
+});
+
+document.getElementById('sendEmailBtn')?.addEventListener('click', sendEmail);
         }
 
         // Event Handlers
@@ -845,7 +876,480 @@ fetch('/general/table/save-preferences/ventes_Facture/', {
                     console.warn('Could not load user preferences:', error);
                 });
         }
+// Email Functions
+function openEmailModal(invoiceId, reference) {
+    document.getElementById('emailReference').value = reference;
+    document.getElementById('emailReference').dataset.invoiceId = invoiceId;
+    document.getElementById('emailObjet').value = `Facture ${reference}`;
+    document.getElementById('emailDestinataire').value = '';
+    document.getElementById('emailMessage').value = `Bonjour,\n\nVeuillez trouver ci-joint la facture ${reference}.\n\nCordialement`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('emailModal'));
+    modal.show();
+}
 
+function sendEmail() {
+    const invoiceId = document.getElementById('emailReference').dataset.invoiceId;
+    const destinataire = document.getElementById('emailDestinataire').value;
+    const objet = document.getElementById('emailObjet').value;
+    const message = document.getElementById('emailMessage').value;
+    const reference = document.getElementById('emailReference').value;
+
+    if (!destinataire || !objet || !message) {
+        toastr.error('Veuillez remplir tous les champs');
+        return;
+    }
+
+    const emailData = {
+        invoiceId: invoiceId,
+        destinataire: destinataire,
+        objet: objet,
+        message: message,
+        reference: reference
+    };
+
+    // Afficher un loader sur le bouton
+    const sendBtn = document.getElementById('sendEmailBtn');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Envoi en cours...';
+
+    fetch('/facture/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            toastr.success('Email envoyé avec succès');
+            bootstrap.Modal.getInstance(document.getElementById('emailModal')).hide();
+            // Reset form
+            document.getElementById('emailForm').reset();
+        } else {
+            toastr.error(data.message || 'Erreur lors de l\'envoi');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        toastr.error('Erreur lors de l\'envoi de l\'email');
+    })
+    .finally(() => {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = originalText;
+    });
+}
+// ✅ Remplacez la fonction openEmailHistoryModal par celle-ci :
+
+function openEmailHistoryModal(invoiceId, reference) {
+    document.getElementById('historyInvoiceRef').textContent = reference;
+    
+    const modal = new bootstrap.Modal(document.getElementById('emailHistoryModal'));
+    modal.show();
+    
+    // Afficher le loader
+    document.getElementById('emailHistoryLoading').classList.remove('d-none');
+    document.getElementById('emailHistoryContent').classList.add('d-none');
+    document.getElementById('emailHistoryEmpty').classList.add('d-none');
+    
+    fetch(`/facture/${invoiceId}/email-history`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('emailHistoryLoading').classList.add('d-none');
+            
+            const tbody = document.getElementById('emailHistoryTableBody');
+            tbody.innerHTML = '';
+
+            if (!data || !data.length) {
+                document.getElementById('emailHistoryEmpty').classList.remove('d-none');
+            } else {
+                document.getElementById('emailHistoryContent').classList.remove('d-none');
+                
+                data.forEach(email => {
+                    const statusBadge = email.statut === 'envoyé' 
+                        ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Envoyé</span>'
+                        : '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Échec</span>';
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <i class="fas fa-user-circle me-2 text-muted"></i>
+                            <strong>${escapeHtml(email.destinataire)}</strong>
+                        </td>
+                        <td class="text-truncate" style="max-width: 250px;" title="${escapeHtml(email.objet)}">
+                            ${escapeHtml(email.objet)}
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                <i class="far fa-clock me-1"></i>
+                                ${new Date(email.date).toLocaleDateString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </small>
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-info me-1 view-email-detail-btn" 
+                                    data-email-id="${email.id}" 
+                                    data-invoice-id="${invoiceId}"
+                                    title="Voir les détails">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <a href="/facture/${invoiceId}/pdf" 
+                               target="_blank" 
+                               class="btn btn-sm btn-outline-danger" 
+                               title="Voir le PDF">
+                                <i class="fas fa-file-pdf"></i>
+                            </a>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('emailHistoryLoading').classList.add('d-none');
+            document.getElementById('emailHistoryEmpty').classList.remove('d-none');
+            toastr.error('Erreur lors du chargement de l\'historique');
+        });
+}
+
+// ✅ Mise à jour de viewEmailDetail pour afficher le bouton PDF
+function viewEmailDetail(emailId) {
+    // Récupérer l'invoiceId depuis le bouton cliqué
+    const button = document.querySelector(`[data-email-id="${emailId}"]`);
+    const invoiceId = button?.dataset.invoiceId;
+
+    fetch(`/facture/email-detail/${emailId}`)
+        .then(res => res.json())
+        .then(email => {
+            document.getElementById('detailDestinataire').innerHTML = 
+                `<i class="fas fa-envelope me-2 text-primary"></i>${escapeHtml(email.destinataire)}`;
+            document.getElementById('detailDate').innerHTML = 
+                `<i class="fas fa-calendar me-2 text-primary"></i>${new Date(email.date).toLocaleString('fr-FR')}`;
+            document.getElementById('detailObjet').textContent = email.objet;
+            document.getElementById('detailMessage').textContent = email.message;
+            
+            const statusBadge = email.statut === 'envoyé' 
+                ? '<span class="badge bg-success fs-6"><i class="fas fa-check me-2"></i>Envoyé avec succès</span>'
+                : '<span class="badge bg-danger fs-6"><i class="fas fa-times me-2"></i>Échec d\'envoi</span>';
+            document.getElementById('detailStatut').innerHTML = statusBadge;
+
+            // ✅ Affichage du bouton PDF
+            const pdfBtnContainer = document.getElementById('detailPdfContainer');
+            if (pdfBtnContainer && invoiceId) {
+                pdfBtnContainer.innerHTML = `
+                    <a href="/facture/${invoiceId}/pdf" 
+                       target="_blank" 
+                       class="btn btn-danger btn-lg">
+                        <i class="fas fa-file-pdf me-2"></i>Voir la facture PDF
+                    </a>
+                `;
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('emailDetailModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('Erreur lors du chargement des détails');
+        });
+}
+
+// ✅ Assurez-vous que les event listeners sont bien configurés
+document.addEventListener('click', e => {
+    if (e.target.closest('.send-email-btn')) {
+        const btn = e.target.closest('.send-email-btn');
+        openEmailModal(btn.dataset.id, btn.dataset.reference);
+    }
+    
+    if (e.target.closest('.email-history-btn')) {
+        const btn = e.target.closest('.email-history-btn');
+        openEmailHistoryModal(btn.dataset.id, btn.dataset.reference);
+    }
+    
+    if (e.target.closest('.view-email-detail-btn')) {
+        const btn = e.target.closest('.view-email-detail-btn');
+        viewEmailDetail(btn.dataset.emailId);
+    }
+});
+
+// ✅ Bouton global "Historique emails" dans l'en-tête
+document.getElementById('email-history-btn')?.addEventListener('click', function() {
+    openGlobalEmailHistory();
+});
+
+function openGlobalEmailHistory() {
+    const modal = new bootstrap.Modal(document.getElementById('emailHistoryModal'));
+    document.getElementById('historyInvoiceRef').textContent = 'Toutes les factures';
+    modal.show();
+    
+    document.getElementById('emailHistoryLoading').classList.remove('d-none');
+    document.getElementById('emailHistoryContent').classList.add('d-none');
+    document.getElementById('emailHistoryEmpty').classList.add('d-none');
+    
+    fetch('/facture/email-history')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('emailHistoryLoading').classList.add('d-none');
+            
+            const tbody = document.getElementById('emailHistoryTableBody');
+            tbody.innerHTML = '';
+
+            if (!data || !data.length) {
+                document.getElementById('emailHistoryEmpty').classList.remove('d-none');
+            } else {
+                document.getElementById('emailHistoryContent').classList.remove('d-none');
+                
+                data.forEach(email => {
+                    const statusBadge = email.statut === 'envoyé' 
+                        ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Envoyé</span>'
+                        : '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Échec</span>';
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <i class="fas fa-file-invoice me-2 text-primary"></i>
+                            <strong>${escapeHtml(email.reference)}</strong>
+                        </td>
+                        <td>
+                            <i class="fas fa-user-circle me-2 text-muted"></i>
+                            ${escapeHtml(email.destinataire)}
+                        </td>
+                        <td class="text-truncate" style="max-width: 200px;" title="${escapeHtml(email.objet)}">
+                            ${escapeHtml(email.objet)}
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                <i class="far fa-clock me-1"></i>
+                                ${new Date(email.date).toLocaleDateString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </small>
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-info me-1 view-email-detail-btn" 
+                                    data-email-id="${email.id}" 
+                                    data-invoice-id="${email.invoiceId || ''}"
+                                    title="Voir les détails">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <a href="/facture/${email.invoiceId || ''}/pdf" 
+                               target="_blank" 
+                               class="btn btn-sm btn-outline-danger" 
+                               title="Voir le PDF">
+                                <i class="fas fa-file-pdf"></i>
+                            </a>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('emailHistoryLoading').classList.add('d-none');
+            document.getElementById('emailHistoryEmpty').classList.remove('d-none');
+            toastr.error('Erreur lors du chargement de l\'historique');
+        });
+}
+
+function openEmailHistoryModal() {
+    fetch('/facture/email-history')
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById('emailHistoryTableBody');
+            tbody.innerHTML = '';
+
+            if (!data || !data.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Aucun email envoyé</td></tr>';
+            } else {
+                data.forEach(email => {
+                    const statusBadge = email.statut === 'envoyé' 
+                        ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Envoyé</span>'
+                        : '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Échec</span>';
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${escapeHtml(email.reference)}</strong></td>
+                            <td><i class="fas fa-envelope me-2 text-muted"></i>${escapeHtml(email.destinataire)}</td>
+                            <td>${escapeHtml(email.objet)}</td>
+                            <td><i class="far fa-clock me-2 text-muted"></i>${new Date(email.date).toLocaleString('fr-FR')}</td>
+                            <td>${statusBadge}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('emailHistoryModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('Erreur lors du chargement de l\'historique');
+        });
+}
     })();
     </script>
+    <!-- Modal Envoyer Email -->
+<div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="emailModalLabel">
+                    <i class="fas fa-paper-plane me-2"></i>Envoyer la facture par email
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="emailForm">
+                    <div class="mb-3">
+                        <label for="emailReference" class="form-label fw-bold">
+                            <i class="fas fa-hashtag me-2 text-primary"></i>Référence de la facture
+                        </label>
+                        <input type="text" class="form-control" id="emailReference" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="emailDestinataire" class="form-label fw-bold">
+                            <i class="fas fa-user me-2 text-primary"></i>Destinataire
+                        </label>
+                        <input type="email" class="form-control" id="emailDestinataire" placeholder="exemple@email.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="emailObjet" class="form-label fw-bold">
+                            <i class="fas fa-envelope me-2 text-primary"></i>Objet
+                        </label>
+                        <input type="text" class="form-control" id="emailObjet" placeholder="Facture N°..." required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="emailMessage" class="form-label fw-bold">
+                            <i class="fas fa-comment-dots me-2 text-primary"></i>Message
+                        </label>
+                        <textarea class="form-control" id="emailMessage" rows="5" placeholder="Votre message ici..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-primary" id="sendEmailBtn">
+                    <i class="fas fa-paper-plane me-2"></i>Envoyer par mail
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Historique Emails pour une facture spécifique -->
+<div class="modal fade" id="emailHistoryModal" tabindex="-1" aria-labelledby="emailHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h5 class="modal-title text-white" id="emailHistoryModalLabel">
+                    <i class="fas fa-clock-rotate-left me-2"></i>Historique des emails - <span id="historyInvoiceRef" class="fw-bold"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="emailHistoryLoading" class="text-center py-5 d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Chargement de l'historique...</p>
+                </div>
+                <div id="emailHistoryContent">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 25%;"><i class="fas fa-user me-2 text-primary"></i>Destinataire</th>
+                                    <th style="width: 30%;"><i class="fas fa-envelope me-2 text-primary"></i>Objet</th>
+                                    <th style="width: 20%;"><i class="fas fa-calendar me-2 text-primary"></i>Date d'envoi</th>
+                                    <th style="width: 15%;"><i class="fas fa-check-circle me-2 text-primary"></i>Statut</th>
+                                    <th style="width: 10%;" class="text-center"><i class="fas fa-cog me-2 text-primary"></i>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="emailHistoryTableBody">
+                                <!-- Les lignes seront ajoutées dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="emailHistoryEmpty" class="text-center py-5 d-none">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Aucun email envoyé pour cette facture</p>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal détails d'un email -->
+<div class="modal fade" id="emailDetailModal" tabindex="-1" aria-labelledby="emailDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="emailDetailModalLabel">
+                    <i class="fas fa-envelope-open-text me-2"></i>Détails de l'email
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-muted small">DESTINATAIRE</label>
+                        <p id="detailDestinataire" class="mb-0"><i class="fas fa-envelope me-2 text-primary"></i></p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-muted small">DATE D'ENVOI</label>
+                        <p id="detailDate" class="mb-0"><i class="fas fa-calendar me-2 text-primary"></i></p>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted small">OBJET</label>
+                    <p id="detailObjet" class="mb-0"></p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted small">MESSAGE</label>
+                    <div id="detailMessage" class="border rounded p-3 bg-light" style="white-space: pre-wrap;"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted small">STATUT</label>
+                    <p id="detailStatut" class="mb-0"></p>
+                </div>
+
+                {# 🧩 AJOUTE ICI le conteneur PDF #}
+                <div class="mt-4 text-center" id="detailPdfContainer">
+                    <!-- Le lien PDF sera injecté ici -->
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

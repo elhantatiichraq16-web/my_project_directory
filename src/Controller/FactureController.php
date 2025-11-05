@@ -2,6 +2,9 @@
 
 namespace App\Controller;
 
+use App\Entity\EmailLog;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 use App\Entity\Facture;
 use App\Entity\LigneFacture;
 use App\Entity\ParamsVentes;
@@ -36,142 +39,186 @@ class FactureController extends AbstractController
     }
 
     #[Route('/facture/create', name: 'app_facture_create')]
-public function create(
-    Request $request,
-    TiersRepository $tiersRepo,
-    EntityManagerInterface $entityManager,
-    ParamsVentesRepository $paramsVentesRepository
-): Response {
-    // 🟩 If form is submitted (POST)
-    if ($request->isMethod('POST')) {
-        try {
-            $data = $request->request->all();
-            
-            // ✅ Simple direct validation
-            $errors = [];
-            
-            if (empty($data['reference'])) {
-                $errors['reference'] = 'La référence est obligatoire';
-            }
-            if (empty($data['tier']) || $data['tier'] === '') {
-                $errors['tier'] = 'Le client est obligatoire';
-            }
-            if (empty($data['objet'])) {
-                $errors['objet'] = 'L\'objet est obligatoire';
-            }
-            if (empty($data['date_creation'])) {
-                $errors['date_creation'] = 'La date de création est obligatoire';
-            }
-            
-            // If validation fails, return JSON error
-            if (!empty($errors)) {
-                return new JsonResponse([
-                    'success' => false,
-                    'errors' => $errors,
-                ], 400);
-            }
-
-            // 🧾 Create invoice
-            $facture = new Facture();
-            $facture->setReference($data['reference']);
-            $facture->setObjet($data['objet'] ?? '');
-            $facture->setDevise($data['devise'] ?? 'MAD');
-            $facture->setEtat($data['etat'] ?? 'Brouillon');
-            $facture->setNotes($data['notes'] ?? '');
-
-            $facture->setDateCreation(
-                !empty($data['date_creation'])
-                    ? new \DateTime($data['date_creation'])
-                    : new \DateTime()
-            );
-
-            if (!empty($data['date_echeance'])) {
-                $facture->setDateEcheance(new \DateTime($data['date_echeance']));
-            }
-
-            if (!empty($data['tier'])) {
-                $tier = $tiersRepo->find($data['tier']);
-                if ($tier) {
-                    $facture->setTier($tier);
+    public function create(
+        Request $request,
+        TiersRepository $tiersRepo,
+        EntityManagerInterface $entityManager,
+        ParamsVentesRepository $paramsVentesRepository,
+        MailerInterface $mailer,
+    ): Response {
+        if ($request->isMethod('POST')) {
+            try {
+                $data = $request->request->all();
+                
+                $errors = [];
+                
+                if (empty($data['reference'])) {
+                    $errors['reference'] = 'La référence est obligatoire';
                 }
-            }
+                if (empty($data['tier']) || $data['tier'] === '') {
+                    $errors['tier'] = 'Le client est obligatoire';
+                }
+                if (empty($data['objet'])) {
+                    $errors['objet'] = 'L\'objet est obligatoire';
+                }
+                if (empty($data['date_creation'])) {
+                    $errors['date_creation'] = 'La date de création est obligatoire';
+                }
+                
+                if (!empty($errors)) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'errors' => $errors,
+                    ], 400);
+                }
 
-            // Retenues et remise globale
-            $facture->setRetenueSource(isset($data['retenue_source_globale']) ? (float)$data['retenue_source_globale'] : null);
-            $facture->setRetenueGarantie(isset($data['retenue_garantie_globale']) ? (float)$data['retenue_garantie_globale'] : null);
-            $facture->setRemiseGlobale(isset($data['remise_globale']) ? (float)$data['remise_globale'] : null);
+                $facture = new Facture();
+                $facture->setReference($data['reference']);
+                $facture->setObjet($data['objet'] ?? '');
+                $facture->setDevise($data['devise'] ?? 'MAD');
+                $facture->setEtat($data['etat'] ?? 'Brouillon');
+                $facture->setNotes($data['notes'] ?? '');
 
-            $entityManager->persist($facture);
-            $entityManager->flush();
+                $facture->setDateCreation(
+                    !empty($data['date_creation'])
+                        ? new \DateTime($data['date_creation'])
+                        : new \DateTime()
+                );
 
-            // 🔹 Save product lines
-            if (!empty($data['produits']) && is_array($data['produits'])) {
-                foreach ($data['produits'] as $produit) {
-                    if (!empty($produit['produit'])) {
-                        $ligne = new LigneFacture();
-                        $ligne->setFacture($facture);
-                        $ligne->setReference($produit['reference'] ?? '');
-                        $ligne->setProduit($produit['produit']);
-                        $ligne->setQuantite((float)($produit['quantite'] ?? 1));
-                        $ligne->setPrixHt((float)($produit['prix_ht'] ?? 0));
-                        $ligne->setTva((float)($produit['tva'] ?? 20));
-                        $ligne->setRemise((float)($produit['remise'] ?? 0));
+                if (!empty($data['date_echeance'])) {
+                    $facture->setDateEcheance(new \DateTime($data['date_echeance']));
+                }
 
-                        // Calculate TTC
-                        if (!empty($produit['total_ttc'])) {
-                            $ligne->setTotalTtc((float)$produit['total_ttc']);
-                        } else {
-                            $ht = $ligne->getQuantite() * $ligne->getPrixHt();
-                            $remise = $ht * ($ligne->getRemise() / 100);
-                            $htNet = $ht - $remise;
-                            $ttc = $htNet + ($htNet * $ligne->getTva() / 100);
-                            $ligne->setTotalTtc($ttc);
-                        }
-
-                        if (!empty($produit['description']) && method_exists($ligne, 'setDescription')) {
-                            $ligne->setDescription($produit['description']);
-                        }
-
-                        if (!empty($produit['unite']) && method_exists($ligne, 'setUnite')) {
-                            $ligne->setUnite($produit['unite']);
-                        }
-
-                        $entityManager->persist($ligne);
+                if (!empty($data['tier'])) {
+                    $tier = $tiersRepo->find($data['tier']);
+                    if ($tier) {
+                        $facture->setTier($tier);
                     }
                 }
+
+                $facture->setRetenueSource(isset($data['retenue_source_globale']) ? (float)$data['retenue_source_globale'] : null);
+                $facture->setRetenueGarantie(isset($data['retenue_garantie_globale']) ? (float)$data['retenue_garantie_globale'] : null);
+                $facture->setRemiseGlobale(isset($data['remise_globale']) ? (float)$data['remise_globale'] : null);
+
+                // ✅ Persist et flush la facture UNE SEULE FOIS (elle a besoin d'un ID pour les lignes)
+                $entityManager->persist($facture);
                 $entityManager->flush();
+
+                $pdfPath = $this->savePdfLocally($facture, $paramsVentesRepository);
+
+                $clientEmail = $facture->getTier()?->getEmail() ?? 'client@example.com';
+
+                $email = (new Email())
+                    ->from($this->getParameter('mailer_from'))
+                    ->to($clientEmail)
+                    ->subject('Nouvelle facture ' . $facture->getReference())
+                    ->text("Bonjour,\n\nVeuillez trouver votre facture " . $facture->getReference() . " ci-jointe.\nMerci de votre confiance.");
+
+                if (file_exists($pdfPath)) {
+                    $email->attachFromPath($pdfPath);
+                }
+
+                try {
+                    $mailer->send($email);
+                } catch (\Throwable $mailError) {
+                    // L'email échoue mais ne bloque pas la création de la facture
+                    error_log('Email error: ' . $mailError->getMessage());
+                }
+
+                // ✅ Traiter les lignes produits avec validation complète
+                if (!empty($data['produits']) && is_array($data['produits'])) {
+                    $ordre = 1;
+                    foreach ($data['produits'] as $produitData) {
+                        // ✅ Validation : au moins le produit ou la référence doit être renseignée
+                        if (empty($produitData['produit']) && empty($produitData['reference'])) {
+                            continue;
+                        }
+
+                        // ✅ Validation des champs obligatoires
+                        $quantite = (float)($produitData['quantite'] ?? 1);
+                        $prixHt = (float)($produitData['prix_ht'] ?? 0);
+                        $tva = (float)($produitData['tva'] ?? 20);
+                        $remise = (float)($produitData['remise'] ?? 0);
+
+                        // ✅ Validation des valeurs
+                        if ($quantite <= 0) {
+                            throw new \Exception('La quantité doit être supérieure à 0 pour le produit ' . ($produitData['produit'] ?? $produitData['reference']));
+                        }
+                        if ($prixHt < 0) {
+                            throw new \Exception('Le prix HT ne peut pas être négatif pour le produit ' . ($produitData['produit'] ?? $produitData['reference']));
+                        }
+                        if ($tva < 0 || $tva > 100) {
+                            throw new \Exception('La TVA doit être comprise entre 0 et 100 pour le produit ' . ($produitData['produit'] ?? $produitData['reference']));
+                        }
+                        if ($remise < 0 || $remise > 100) {
+                            throw new \Exception('La remise doit être comprise entre 0 et 100 pour le produit ' . ($produitData['produit'] ?? $produitData['reference']));
+                        }
+
+                        $ligne = new LigneFacture();
+                        $ligne->setFacture($facture);
+                        $ligne->setReference($produitData['reference'] ?? '');
+                        $ligne->setProduit($produitData['produit'] ?? '');
+                        $ligne->setQuantite($quantite);
+                        $ligne->setPrixHt($prixHt);
+                        $ligne->setTva($tva);
+                        $ligne->setRemise($remise);
+                        $ligne->setOrdre($ordre++);
+
+                        // ✅ Calcul du total TTC et montant TVA
+                        $htLigne = $quantite * $prixHt;
+                        $montantRemise = $htLigne * ($remise / 100);
+                        $htNet = $htLigne - $montantRemise;
+                        $montantTva = $htNet * ($tva / 100);
+                        $totalTtc = $htNet + $montantTva;
+
+                        $ligne->setMontantTva($montantTva);
+                        $ligne->setTotalTtc($totalTtc);
+
+                        // ✅ Ajouter les champs optionnels
+                        if (!empty($produitData['description'])) {
+                            $ligne->setDescription($produitData['description']);
+                        }
+
+                        if (!empty($produitData['unite'])) {
+                            $ligne->setUnite($produitData['unite']);
+                        }
+
+                        $facture->addLigne($ligne);
+                        $entityManager->persist($ligne);
+                    }
+
+                    // ✅ Flush une seule fois après toutes les lignes
+                    $entityManager->flush();
+                }
+
+                return new JsonResponse([
+                    'success' => true, 
+                    'id' => $facture->getId()
+                ]);
+
+            } catch (\Throwable $e) {
+                error_log('Error in facture create: ' . $e->getMessage());
+                error_log('Stack trace: ' . $e->getTraceAsString());
+                
+                return new JsonResponse([
+                    'success' => false, 
+                    'error' => $e->getMessage()
+                ], 500);
             }
-
-            // ✅ Return JSON success
-            return new JsonResponse([
-                'success' => true, 
-                'id' => $facture->getId()
-            ]);
-
-        } catch (\Throwable $e) {
-            error_log('Error in facture create: ' . $e->getMessage());
-            error_log('Stack trace: ' . $e->getTraceAsString());
-            
-            return new JsonResponse([
-                'success' => false, 
-                'error' => $e->getMessage()
-            ], 500);
         }
+
+        $tiers = $tiersRepo->findAll();
+        $factureParams = $this->getAllFactureParams($paramsVentesRepository);
+        $modePaiement = ['Espèces', 'Chèque', 'Virement bancaire', 'Carte de crédit'];
+        $devises = ['MAD', 'EUR', 'USD'];
+
+        return $this->render('facture/create.html.twig', [
+            'tiers' => $tiers,
+            'modePaiement' => $modePaiement,
+            'devises' => $devises,
+            'factureParams' => $factureParams,
+        ]);
     }
-
-    // 🟩 Initial form (GET)
-    $tiers = $tiersRepo->findAll();
-    $factureParams = $this->getAllFactureParams($paramsVentesRepository);
-    $modePaiement = ['Espèces', 'Chèque', 'Virement bancaire', 'Carte de crédit'];
-    $devises = ['MAD', 'EUR', 'USD'];
-
-    return $this->render('facture/create.html.twig', [
-        'tiers' => $tiers,
-        'modePaiement' => $modePaiement,
-        'devises' => $devises,
-        'factureParams' => $factureParams,
-    ]);
-}
 
     #[Route('/factures', name: 'app_factures_list')]
     public function facturesList(FactureRepository $factureRepository, TiersRepository $tiersRepo): Response
@@ -266,31 +313,68 @@ public function create(
 
                 $facture->setDateModification(new \DateTimeImmutable());
 
-                // Gestion des lignes produits
+                // ✅ Supprimer les anciennes lignes
                 foreach ($facture->getLignes() as $ligneExistante) {
                     $facture->removeLigne($ligneExistante);
                     $entityManager->remove($ligneExistante);
                 }
                 $entityManager->flush();
 
+                // ✅ Créer les nouvelles lignes avec validation complète
                 if (!empty($data['produits']) && is_array($data['produits'])) {
+                    $ordre = 1;
                     foreach ($data['produits'] as $produitData) {
-                        if (empty($produitData['produit']) && empty($produitData['reference'])) continue;
+                        // ✅ Validation : au moins le produit ou la référence doit être renseignée
+                        if (empty($produitData['produit']) && empty($produitData['reference'])) {
+                            continue;
+                        }
+
+                        // ✅ Validation des champs obligatoires
+                        $quantite = (float)($produitData['quantite'] ?? 1);
+                        $prixHt = (float)($produitData['prix_ht'] ?? 0);
+                        $tva = (float)($produitData['tva'] ?? 20);
+                        $remise = (float)($produitData['remise'] ?? 0);
+
+                        // ✅ Validation des valeurs
+                        if ($quantite <= 0) {
+                            throw new \Exception('La quantité doit être supérieure à 0 pour le produit ' . ($produitData['produit'] ?? $produitData['reference']));
+                        }
+                        if ($prixHt < 0) {
+                            throw new \Exception('Le prix HT ne peut pas être négatif pour le produit ' . ($produitData['produit'] ?? $produitData['reference']));
+                        }
+                        if ($tva < 0 || $tva > 100) {
+                            throw new \Exception('La TVA doit être comprise entre 0 et 100 pour le produit ' . ($produitData['produit'] ?? $produitData['reference']));
+                        }
+                        if ($remise < 0 || $remise > 100) {
+                            throw new \Exception('La remise doit être comprise entre 0 et 100 pour le produit ' . ($produitData['produit'] ?? $produitData['reference']));
+                        }
 
                         $ligne = new LigneFacture();
                         $ligne->setFacture($facture);
                         $ligne->setReference($produitData['reference'] ?? '');
                         $ligne->setProduit($produitData['produit'] ?? '');
-                        $ligne->setQuantite((float)($produitData['quantite'] ?? 1));
-                        $ligne->setPrixHt((float)($produitData['prix_ht'] ?? 0));
-                        $ligne->setRemise((float)($produitData['remise'] ?? 0));
-                        $ligne->setTva((float)($produitData['tva'] ?? 0));
-                        $ligne->setTotalTtc((float)($produitData['total_ttc'] ?? 0));
+                        $ligne->setQuantite($quantite);
+                        $ligne->setPrixHt($prixHt);
+                        $ligne->setTva($tva);
+                        $ligne->setRemise($remise);
+                        $ligne->setOrdre($ordre++);
 
-                        if (isset($produitData['description'])) {
+                        // ✅ Calcul du total TTC et montant TVA
+                        $htLigne = $quantite * $prixHt;
+                        $montantRemise = $htLigne * ($remise / 100);
+                        $htNet = $htLigne - $montantRemise;
+                        $montantTva = $htNet * ($tva / 100);
+                        $totalTtc = $htNet + $montantTva;
+
+                        $ligne->setMontantTva($montantTva);
+                        $ligne->setTotalTtc($totalTtc);
+
+                        // ✅ Ajouter les champs optionnels
+                        if (!empty($produitData['description'])) {
                             $ligne->setDescription($produitData['description']);
                         }
-                        if (isset($produitData['unite'])) {
+
+                        if (!empty($produitData['unite'])) {
                             $ligne->setUnite($produitData['unite']);
                         }
 
@@ -310,6 +394,7 @@ public function create(
 
         $devises = ['MAD', 'EUR', 'USD'];
 
+        // ✅ Calculer les totaux en utilisant les montants stockés dans les lignes
         $totalHt = 0;
         $totalRemise = 0;
         $totalTva = 0;
@@ -319,18 +404,17 @@ public function create(
             $quantite = (float) $ligne->getQuantite();
             $prixHt = (float) $ligne->getPrixHt();
             $remise = (float) ($ligne->getRemise() ?? 0);
-            $tva = (float) ($ligne->getTva() ?? 0);
+            $montantTva = (float) ($ligne->getMontantTva() ?? 0);
+            $totalTtc_ligne = (float) $ligne->getTotalTtc();
 
             $htLigne = $quantite * $prixHt;
             $montantRemise = $htLigne * ($remise / 100);
-            $htApresRemise = $htLigne - $montantRemise;
-            $montantTva = $htApresRemise * ($tva / 100);
-            $ttc = $htApresRemise + $montantTva;
+            $htNet = $htLigne - $montantRemise;
 
             $totalHt += $htLigne;
             $totalRemise += $montantRemise;
             $totalTva += $montantTva;
-            $totalTtc += $ttc;
+            $totalTtc += $totalTtc_ligne;
         }
 
         $totaux = [
@@ -382,7 +466,234 @@ public function create(
         ]);
     }
 
-    #[Route('/facture/{id}/print', name: 'app_facture_print')]
+    #[Route('/facture/{id}/send-email', name: 'facture_send_email', methods: ['POST'])]
+public function sendEmailUnified(
+    int $id,
+    Request $request,
+    EntityManagerInterface $em,
+    MailerInterface $mailer,
+    ParamsVentesRepository $paramsVentesRepository
+): JsonResponse {
+    try {
+        $data = json_decode($request->getContent(), true);
+
+        $destinataire = $data['destinataire'] ?? $data['email_to'] ?? null;
+        $objet = $data['objet'] ?? $data['email_subject'] ?? null;
+        $message = $data['message'] ?? $data['email_body'] ?? '';
+
+        $facture = $em->getRepository(Facture::class)->find($id);
+        if (!$facture) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => '❌ Facture introuvable.'
+            ], 404);
+        }
+
+        // Si aucun destinataire n’est précisé, on prend celui du client
+        if (empty($destinataire)) {
+            $tier = $facture->getTier();
+            if (!$tier || !$tier->getEmail()) {
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => '❌ Aucun email défini pour ce client.'
+                ], 400);
+            }
+            $destinataire = $tier->getEmail();
+        }
+
+        // Validation de l’email
+        if (!filter_var($destinataire, FILTER_VALIDATE_EMAIL)) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => '❌ Adresse email invalide.'
+            ], 400);
+        }
+
+        // Sujet par défaut si manquant
+        if (empty($objet)) {
+            $objet = 'Votre facture ' . $facture->getReference();
+        }
+
+        // Génération du PDF
+        $html = $this->renderView('facture/pdf.html.twig', [
+            'facture' => $facture,
+            'factureParams' => $this->getAllFactureParams($paramsVentesRepository),
+            'showRetenueSource' => $this->shouldDisplayRetenueSource($paramsVentesRepository),
+            'showRetenueGarantie' => $this->shouldDisplayRetenueGarantie($paramsVentesRepository),
+        ]);
+
+        $options = new \Dompdf\Options();
+        $options->set('defaultFont', 'Arial');
+        $options->set('isRemoteEnabled', true);
+
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+        $pdfOutput = $dompdf->output();
+
+        // Corps du mail
+        $htmlBody = nl2br(htmlspecialchars($message));
+
+        // Préparation email
+        $email = (new \Symfony\Component\Mime\Email())
+            ->from($this->getParameter('mailer_from'))
+            ->to($destinataire)
+            ->subject($objet)
+            ->html($htmlBody)
+            ->text($message)
+            ->attach($pdfOutput, 'facture-' . $facture->getReference() . '.pdf', 'application/pdf');
+
+        // Création du log avant envoi
+        $emailLog = new \App\Entity\EmailLog();
+        $emailLog
+            ->setFacture($facture)
+            ->setToAddress($destinataire)
+            ->setSubject($objet)
+            ->setBody($message)
+            ->setSentAt(new \DateTime());
+
+        try {
+            $mailer->send($email);
+            $emailLog->setStatus('envoyé');
+        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+            $emailLog->setStatus('échec');
+            $emailLog->setErrorMessage($e->getMessage());
+        }
+
+        // Sauvegarde du log
+        $em->persist($emailLog);
+        $em->flush();
+
+        if ($emailLog->getStatus() === 'échec') {
+            return new JsonResponse([
+                'success' => false,
+                'message' => '❌ Erreur d\'envoi : ' . $emailLog->getErrorMessage()
+            ], 500);
+        }
+
+        return new JsonResponse([
+            'success' => true,
+            'message' => '✅ Facture envoyée à ' . $destinataire
+        ]);
+
+    } catch (\Throwable $e) {
+        return new JsonResponse([
+            'success' => false,
+            'message' => '❌ Erreur interne : ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+#[Route('/facture/{id}/email-history', name: 'facture_email_history', methods: ['GET'])]
+public function getEmailHistory(int $id, EntityManagerInterface $em): JsonResponse
+{
+    try {
+        // 🔍 Récupérer la facture
+        $facture = $em->getRepository(Facture::class)->find($id);
+        if (!$facture) {
+            return new JsonResponse(['error' => 'Facture non trouvée'], 404);
+        }
+
+        // 📧 Récupérer uniquement les e-mails envoyés pour cette facture
+        $emails = $em->getRepository(EmailLog::class)->findBy(
+            [
+                'facture' => $facture,
+                'status' => 'envoyé'  // ← filtre ici
+            ],
+            ['sentAt' => 'DESC']
+        );
+
+        // 🧾 Transformer les objets en tableau lisible
+        $result = array_map(function ($email) {
+            return [
+                'id' => $email->getId(),
+                'destinataire' => $email->getToAddress() ?? '(Non spécifié)',
+                'objet' => $email->getSubject() ?? '(Sans objet)',
+                'date' => $email->getSentAt()
+                    ? $email->getSentAt()->format('Y-m-d H:i:s')
+                    : '(Non envoyée)',
+                'statut' => $email->getStatus() ?? 'inconnu',
+            ];
+        }, $emails);
+
+        return new JsonResponse($result);
+
+    } catch (\Throwable $e) {
+        return new JsonResponse(['error' => $e->getMessage()], 500);
+    }
+}
+
+#[Route('/facture/email-history', name: 'facture_email_history_global', methods: ['GET'])]
+public function getGlobalEmailHistory(EntityManagerInterface $em): JsonResponse
+{
+    try {
+        $emails = $em->getRepository(EmailLog::class)->findBy([], ['sentAt' => 'DESC'], 50);
+
+        $result = array_map(function (EmailLog $email) {
+            return [
+                'id' => $email->getId(),
+                'reference' => $email->getFacture() 
+                    ? $email->getFacture()->getReference() 
+                    : '(Aucune)',
+                'destinataire' => $email->getToAddress() ?? '(Non spécifié)',
+                'objet' => $email->getSubject() ?? '(Sans objet)',
+                'date' => $email->getSentAt() 
+                    ? $email->getSentAt()->format('Y-m-d H:i:s') 
+                    : '(Non envoyée)',
+                'statut' => $email->getStatus() ?? 'inconnu',
+            ];
+        }, $emails);
+
+        return new JsonResponse($result);
+    } catch (\Throwable $e) {
+        return new JsonResponse(['error' => $e->getMessage()], 500);
+    }
+}
+
+
+#[Route('/facture/email-detail/{id}', name: 'facture_email_detail', methods: ['GET'])]
+public function getEmailDetail(int $id, EntityManagerInterface $em): JsonResponse
+{
+    try {
+        $email = $em->getRepository(EmailLog::class)->find($id);
+        
+        if (!$email) {
+            return new JsonResponse(['error' => 'Email non trouvé'], 404);
+        }
+
+        // Récupérer la facture liée à cet email
+        $facture = $email->getFacture();
+        $pdfUrl = null;
+        $factureId = null;
+        $factureReference = '(Aucune)';
+
+        if ($facture) {
+            $factureId = $facture->getId();
+            $factureReference = $facture->getReference();
+            $pdfUrl = $this->generateUrl('app_facture_pdf', ['id' => $factureId]);
+        }
+
+        // ✅ On renvoie tout le nécessaire pour le modal
+        return new JsonResponse([
+            'id' => $email->getId(),
+            'factureId' => $factureId,
+            'reference' => $factureReference,
+            'destinataire' => $email->getToAddress(),
+            'objet' => $email->getSubject(),
+            'message' => $email->getBody(),
+            'date' => $email->getSentAt() ? $email->getSentAt()->format('Y-m-d H:i:s') : null,
+            'statut' => $email->getStatus(),
+            'pdfUrl' => $pdfUrl, // 🔗 Lien direct vers la facture PDF
+        ]);
+    } catch (\Throwable $e) {
+        return new JsonResponse(['error' => $e->getMessage()], 500);
+    }
+}
+
+
+ 
+   #[Route('/facture/{id}/print', name: 'app_facture_print')]
     public function printFacture(Facture $facture, ParamsVentesRepository $paramsVentesRepository): Response
     {
         return $this->generatePdf($facture, $paramsVentesRepository);
@@ -447,7 +758,8 @@ public function create(
                     'reference' => $f->getReference(),
                     'tier' => $f->getTier() ? json_encode([
                         'id' => $f->getTier()->getId(),
-                        'name' => $f->getTier()->getNom()
+                        'name' => $f->getTier()->getNom(),
+                        'email' => $f->getTier()->getEmail()
                     ]) : null,
                     'statut' => $f->getEtat(),
                     'etat' => $f->getEtat(),
@@ -695,6 +1007,40 @@ private function getAllFactureParams(ParamsVentesRepository $paramsVentesReposit
     }
 
     return $result;
+}
+/**
+ * Génère un PDF de la facture et le sauvegarde dans /public/factures/
+ * Retourne le chemin complet du fichier généré.
+ */
+private function savePdfLocally(Facture $facture, ParamsVentesRepository $paramsVentesRepository): string
+{
+    $pdfOptions = new \Dompdf\Options();
+    $pdfOptions->set('defaultFont', 'Arial');
+    $pdfOptions->set('isRemoteEnabled', true);
+
+    $dompdf = new \Dompdf\Dompdf($pdfOptions);
+
+    $html = $this->renderView('facture/pdf.html.twig', [
+        'facture' => $facture,
+        'factureParams' => $this->getAllFactureParams($paramsVentesRepository),
+        'showRetenueSource' => $this->shouldDisplayRetenueSource($paramsVentesRepository),
+        'showRetenueGarantie' => $this->shouldDisplayRetenueGarantie($paramsVentesRepository),
+    ]);
+
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+
+    // Crée le dossier s’il n’existe pas
+    $outputDir = $this->getParameter('kernel.project_dir') . '/public/factures';
+    if (!is_dir($outputDir)) {
+        mkdir($outputDir, 0775, true);
+    }
+
+    $filePath = $outputDir . '/facture_' . $facture->getId() . '.pdf';
+    file_put_contents($filePath, $dompdf->output());
+
+    return $filePath;
 }
 
 }

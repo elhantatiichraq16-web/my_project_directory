@@ -1,0 +1,177 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}📧 Emails envoyés{% endblock %}
+
+{% block body %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">
+            <i class="bi bi-envelope"></i> Emails envoyés
+        </h2>
+        <a href="{{ path('app_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Retour au tableau de bord
+        </a>
+    </div>
+
+    {% if emails is defined and emails|length > 0 %}
+        <table id="emailsTable" class="table table-striped table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Destinataire</th>
+                    <th>Objet</th>
+                    <th>Date d'envoi</th>
+                    <th>Statut</th>
+                    <th style="text-align: center; width: 140px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mail in emails %}
+                    <tr>
+                        <td>{{ mail.toAddress }}</td>
+                        <td>{{ mail.subject }}</td>
+                        <td>{{ mail.sentAt|date('d/m/Y H:i') }}</td>
+                        <td>
+                            {% if mail.status == 'success' %}
+                                <span class="badge bg-success">Envoyé</span>
+                            {% else %}
+                                <span class="badge bg-danger">Échec</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            <!-- Bouton Voir l'email -->
+                            <button type="button" class="btn btn-sm btn-outline-primary view-email-btn" data-email-id="{{ mail.id }}" title="Voir l'email" style="margin-right: 5px;">
+                                <i class="bi bi-eye"></i> Voir
+                            </button>
+                            
+                            <!-- Bouton Télécharger PDF (si facture liée) -->
+                            {% if mail.facture %}
+                                <a href="{{ path('app_facture_pdf', {'id': mail.facture.id}) }}" class="btn btn-sm btn-outline-success" title="Télécharger le PDF" download>
+                                    <i class="bi bi-file-pdf"></i> PDF
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Modal pour voir l'email -->
+        <div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="emailModalLabel">Détails de l'email</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Destinataire:</strong>
+                                <p id="modalDestinataire"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Date d'envoi:</strong>
+                                <p id="modalDate"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <strong>Objet:</strong>
+                                <p id="modalObjet"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <strong>Facture:</strong>
+                                <p id="modalFacture"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <strong>Message:</strong>
+                                <div style="border: 1px solid #ddd; padding: 15px; border-radius: 5px; background-color: #f9f9f9;">
+                                    <p id="modalMessage"></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <strong>Statut:</strong>
+                                <p id="modalStatut"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#" id="pdfLink" class="btn btn-success" target="_blank" style="display:none;">
+                            <i class="bi bi-file-pdf"></i> Voir le PDF
+                        </a>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info text-center">
+            <i class="bi bi-info-circle"></i> Aucun e-mail envoyé pour le moment.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+    $(document).ready(function() {
+        $('#emailsTable').DataTable({
+            pageLength: 10,
+            order: [[2, 'desc']],
+            language: {
+                url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json"
+            }
+        });
+
+        // Gestionnaire pour le bouton "Voir l'email"
+        $('.view-email-btn').on('click', function() {
+            const emailId = $(this).data('email-id');
+            
+            fetch(`/facture/email-detail/${emailId}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Erreur réseau');
+                    return response.json();
+                })
+                .then(data => {
+                    // Remplir le modal avec les données
+                    $('#modalDestinataire').text(data.destinataire || 'N/A');
+                    $('#modalDate').text(data.date || 'N/A');
+                    $('#modalObjet').text(data.objet || 'N/A');
+                    $('#modalFacture').text(data.reference || 'Aucune facture');
+                    $('#modalMessage').html(data.message || 'Aucun message');
+                    $('#modalStatut').html(
+                        data.statut === 'success' 
+                            ? '<span class="badge bg-success">Envoyé</span>' 
+                            : '<span class="badge bg-danger">Échec</span>'
+                    );
+                    
+                    // Afficher/masquer le lien PDF
+                    if (data.pdfUrl) {
+                        $('#pdfLink').attr('href', data.pdfUrl).show();
+                    } else {
+                        $('#pdfLink').hide();
+                    }
+                    
+                    // Ouvrir le modal
+                    const modal = new bootstrap.Modal(document.getElementById('emailModal'));
+                    modal.show();
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors de la récupération des détails de l\'email');
+                });
+        });
+    });
+</script>
+{% endblock %}

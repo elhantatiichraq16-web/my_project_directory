@@ -6,7 +6,7 @@
 {{ parent() }}
 <style>
     .page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1b113eff 0%, #4d256dff 100%);
         color: white;
         padding: 2rem 0;
         margin-bottom: 2rem;
@@ -60,7 +60,7 @@
     }
 
     .stats-card.primary .icon {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1b113eff 0%, #4d256dff 100%);
         color: white;
     }
 
@@ -113,7 +113,7 @@
     }
 
     table.dataTable thead th {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1b113eff 0%, #4d256dff 100%);
         color: white !important;
         font-weight: 600;
         border: none !important;
@@ -484,30 +484,15 @@
 {% block javascripts %}
 {{ parent() }}
 <script>
-    $(document).ready(function() {
+  $(document).ready(function() {
+    if (!$.fn.DataTable.isDataTable('#cataloguesTable')) {
         $('#cataloguesTable').DataTable({
             dom: 'Bfrtip',
             buttons: [
-                {
-                    extend: 'copy',
-                    text: '<i class="fas fa-copy"></i> Copier',
-                    className: 'btn-primary'
-                },
-                {
-                    extend: 'excel',
-                    text: '<i class="fas fa-file-excel"></i> Excel',
-                    className: 'btn-success'
-                },
-                {
-                    extend: 'pdf',
-                    text: '<i class="fas fa-file-pdf"></i> PDF',
-                    className: 'btn-danger'
-                },
-                {
-                    extend: 'print',
-                    text: '<i class="fas fa-print"></i> Imprimer',
-                    className: 'btn-info'
-                }
+                { extend: 'copy', text: '<i class="fas fa-copy"></i> Copier', className: 'btn-primary' },
+                { extend: 'excel', text: '<i class="fas fa-file-excel"></i> Excel', className: 'btn-success' },
+                { extend: 'pdf', text: '<i class="fas fa-file-pdf"></i> PDF', className: 'btn-danger' },
+                { extend: 'print', text: '<i class="fas fa-print"></i> Imprimer', className: 'btn-info' }
             ],
             pageLength: 25,
             lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tous"]],
@@ -516,11 +501,11 @@
             },
             order: [[0, 'desc']],
             responsive: true,
-            columnDefs: [
-                { targets: -1, orderable: false }
-            ]
+            columnDefs: [{ targets: -1, orderable: false }]
         });
-    });
+    }
+});
+
 
     function confirmDelete(id) {
         if (confirm('Êtes-vous sûr de vouloir supprimer ce catalogue ?')) {

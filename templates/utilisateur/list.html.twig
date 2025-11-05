@@ -1,24 +1,37 @@
 {% extends 'base.html.twig' %}
+
 {% block title %}Utilisateurs{% endblock %}
+
 {% block body %}
-<div class="container-fluid">
+<div class="container-fluid py-4">
+
+    {# Messages flash #}
     {% for msg in app.flashes('error') %}
-        <div class="alert alert-danger">{{ msg }}</div>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     {% endfor %}
     {% for msg in app.flashes('success') %}
-        <div class="alert alert-success">{{ msg }}</div>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     {% endfor %}
 
+    {# Titre + bouton d’ajout #}
     <section id="utilisateurs">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1 class="h3 mb-0">Utilisateurs</h1>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0 fw-bold">Gestion des utilisateurs</h1>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
-                <i class="bi bi-person-plus me-2"></i>Ajouter un client
+                <i class="bi bi-person-plus me-2"></i> Ajouter un client
             </button>
         </div>
-        <div class="table-responsive">
-            <table id="usersTable" class="table table-striped table-bordered align-middle">
-                <thead class="table-light">
+
+        {# Tableau des utilisateurs #}
+        <div class="table-responsive shadow-sm rounded">
+            <table id="usersTable" class="table table-striped table-hover align-middle mb-0">
+                <thead class="table-primary">
                     <tr>
                         <th>ID</th>
                         <th>Nom</th>
@@ -27,7 +40,7 @@
                         <th>Adresse</th>
                         <th>Téléphone</th>
                         <th>Photo</th>
-                        <th>Actions</th>
+                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -46,14 +59,18 @@
                                     <span class="text-muted">Aucune</span>
                                 {% endif %}
                             </td>
-                            <td class="text-nowrap">
-                                <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#editUser{{ utilisateur.id }}">Modifier</button>
-                                <a href="{{ path('app_utilisateur_delete', { id: utilisateur.id }) }}" class="btn btn-sm btn-danger">Supprimer</a>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#editUser{{ utilisateur.id }}">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <a href="{{ path('app_utilisateur_delete', { id: utilisateur.id }) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Voulez-vous vraiment supprimer cet utilisateur ?');">
+                                    <i class="bi bi-trash"></i>
+                                </a>
                             </td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="8" class="text-center text-muted">Aucun utilisateur enregistré.</td>
+                            <td colspan="8" class="text-center text-muted py-4">Aucun utilisateur enregistré.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -62,13 +79,14 @@
     </section>
 </div>
 
+{# Modal d’ajout #}
 <div class="modal fade" id="createUserModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <form method="post" action="{{ path('app_utilisateur_create') }}">
-                <div class="modal-header">
+                <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">Ajouter un client</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
@@ -100,8 +118,7 @@
                 </div>
                 <div class="modal-footer">
                     <input type="hidden" name="_token" value="{{ csrf_token('submit') }}">
-
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                     <button type="submit" class="btn btn-primary">Enregistrer</button>
                 </div>
             </form>
@@ -109,50 +126,52 @@
     </div>
 </div>
 
+{# Modals de modification #}
 {% for utilisateur in utilisateurs %}
-    <div class="modal fade" id="editUser{{ utilisateur.id }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <form method="post" action="{{ path('app_utilisateur_update', { id: utilisateur.id }) }}" enctype="multipart/form-data">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Modifier {{ utilisateur.name }} {{ utilisateur.prenom }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label" for="name{{ utilisateur.id }}">Nom</label>
-                                <input type="text" id="name{{ utilisateur.id }}" name="name" class="form-control" value="{{ utilisateur.name }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="prenom{{ utilisateur.id }}">Prénom</label>
-                                <input type="text" id="prenom{{ utilisateur.id }}" name="prenom" class="form-control" value="{{ utilisateur.prenom }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="email{{ utilisateur.id }}">Email</label>
-                                <input type="email" id="email{{ utilisateur.id }}" name="email" class="form-control" value="{{ utilisateur.email }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="adresse{{ utilisateur.id }}">Adresse</label>
-                                <input type="text" id="adresse{{ utilisateur.id }}" name="adresse" class="form-control" value="{{ utilisateur.adresse }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="telephone{{ utilisateur.id }}">Téléphone</label>
-                                <input type="text" id="telephone{{ utilisateur.id }}" name="telephone" class="form-control" value="{{ utilisateur.telephone }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="password{{ utilisateur.id }}">Mot de passe</label>
-                                <input type="password" id="password{{ utilisateur.id }}" name="password" class="form-control" placeholder="Laisser vide pour ne pas changer">
-                            </div>
+<div class="modal fade" id="editUser{{ utilisateur.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{{ path('app_utilisateur_update', { id: utilisateur.id }) }}" enctype="multipart/form-data">
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title">Modifier {{ utilisateur.name }} {{ utilisateur.prenom }}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="name{{ utilisateur.id }}">Nom</label>
+                            <input type="text" id="name{{ utilisateur.id }}" name="name" class="form-control" value="{{ utilisateur.name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="prenom{{ utilisateur.id }}">Prénom</label>
+                            <input type="text" id="prenom{{ utilisateur.id }}" name="prenom" class="form-control" value="{{ utilisateur.prenom }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="email{{ utilisateur.id }}">Email</label>
+                            <input type="email" id="email{{ utilisateur.id }}" name="email" class="form-control" value="{{ utilisateur.email }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="adresse{{ utilisateur.id }}">Adresse</label>
+                            <input type="text" id="adresse{{ utilisateur.id }}" name="adresse" class="form-control" value="{{ utilisateur.adresse }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="telephone{{ utilisateur.id }}">Téléphone</label>
+                            <input type="text" id="telephone{{ utilisateur.id }}" name="telephone" class="form-control" value="{{ utilisateur.telephone }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="password{{ utilisateur.id }}">Mot de passe</label>
+                            <input type="password" id="password{{ utilisateur.id }}" name="password" class="form-control" placeholder="Laisser vide pour ne pas changer">
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary">Enregistrer</button>
-                    </div>
-                </form>
-            </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 {% endfor %}
+
 {% endblock %}

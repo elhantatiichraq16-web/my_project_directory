@@ -882,26 +882,41 @@ document.addEventListener('DOMContentLoaded', function() {
             myModal.show();
         }
     });
+document.getElementById('modal-btn-email')?.addEventListener('click', async function() {
+    if (!factureId) {
+        alert("⚠️ Vous devez d'abord enregistrer la facture avant d'envoyer l'email.");
+        return;
+    }
 
-    document.getElementById('modal-btn-email')?.addEventListener('click', async function() {
-        if (!factureId) return;
+    try {
+        const response = await fetch(`/facture/${factureId}/send-email`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
 
-        try {
-            const response = await fetch('/facture/' + factureId + '/send-email', {
-                method: 'POST'
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                alert('✅ Email envoyé avec succès !');
-            } else {
-                alert('❌ Erreur lors de l\'envoi : ' + result.message);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Erreur lors de l\'envoi de l\'email');
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+            const text = await response.text();
+            console.error("Réponse non JSON :", text.substring(0, 200));
+            alert("❌ Le serveur n’a pas renvoyé de réponse valide. Vérifie la console !");
+            return;
         }
-    });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('✅ Email envoyé avec succès : ' + result.message);
+        } else {
+            alert('❌ Erreur : ' + result.message);
+        }
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('❌ Erreur lors de l’envoi de l’email.');
+    }
+});
+
+
 
     document.getElementById('modal-btn-print')?.addEventListener('click', function() {
         if (!factureId) return;
@@ -912,16 +927,5 @@ document.addEventListener('DOMContentLoaded', function() {
     calculateTotals();
 });
 
-if (result.errors) {
-    console.log('Validation errors:', result.errors); // Add this line
-    Object.keys(result.errors).forEach(field => {
-        const input = document.querySelector(`[name="${field}"]`);
-        const errorDiv = input?.nextElementSibling;
-        if (errorDiv && errorDiv.classList.contains('error')) {
-            errorDiv.textContent = result.errors[field];
-        }
-    });
-    alert('❌ Veuillez corriger les erreurs dans le formulaire');
-}
 </script>
 {% endblock %}

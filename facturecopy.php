@@ -19,6 +19,9 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
+
 
 class FactureController extends AbstractController
 {
@@ -43,7 +46,8 @@ public function create(
     TiersRepository $tiersRepo,
     EntityManagerInterface $entityManager,
     ParamsVentesRepository $paramsVentesRepository,
-    ValidationForm $validationForm
+    ValidationForm $validationForm,
+    MailerInterface $mailer,
 
 ): Response {
     $tiers = $tiersRepo->findAll();
@@ -157,6 +161,31 @@ if (!empty($data['produits']) && is_array($data['produits'])) {
 
 
 $this->addFlash('success', '✅ Facture enregistrée avec succès !');
+// après $this->addFlash('success', '✅ Facture enregistrée avec succès !');
+
+$email = (new Email())
+    ->from('elhantatiichraq16@gmail.com')
+    ->subject('Nouvelle facture enregistrée')
+    ->text("Une nouvelle facture a été créée avec la référence : {$facture->getReference()}")
+    ->html("<p><strong>Nouvelle facture créée :</strong> {$facture->getReference()}</p>");
+    
+
+// ✅ si le client (tier) a un e-mail, on lui envoie directement
+if ($facture->getTier() && method_exists($facture->getTier(), 'getEmail') && $facture->getTier()->getEmail()) {
+    $email->to($facture->getTier()->getEmail());
+} else {
+    // sinon tu peux l’envoyer à ton adresse par défaut
+    $email->to('elhantatiichraq16@gmail.com');
+}
+
+try {
+    $mailer->send($email);
+    $this->addFlash('success', '📧 Mail envoyé avec succès au client !');
+} catch (\Exception $e) {
+    $this->addFlash('error', '❌ Erreur d’envoi de mail : ' . $e->getMessage());
+}
+
+
 
 // 🔹 En cas de requête AJAX
 if ($request->isXmlHttpRequest()) {
