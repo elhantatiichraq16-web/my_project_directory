@@ -1,0 +1,297 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Liste des clients{% endblock %}
+
+{% block body %}
+<style>
+    .search-container {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .search-container .search-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        font-size: 1.1rem;
+    }
+    
+    .search-input {
+        padding-left: 45px;
+        height: 50px;
+        border-radius: 10px;
+        border: 2px solid #dee2e6;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .search-input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+        outline: none;
+    }
+    
+    .client-card {
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease;
+    }
+    
+    .client-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .page-header {
+        background: linear-gradient(135deg, #1b113eff 0%, #4d256dff 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .page-header h2 {
+        margin: 0;
+        font-weight: 600;
+    }
+    
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .table thead th {
+        background: linear-gradient(135deg, #1b113eff 0%, #4d256dff 100%);
+        color: white;
+        border: none;
+        padding: 1rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+        transform: scale(1.01);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #1b113eff 0%, #4d256dff 100%);
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-warning {
+        background: linear-gradient(135deg, #4a186bff 0%, #6f25acff 100%);
+        border: none;
+        color: white;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-warning:hover {
+        transform: scale(1.05);
+        box-shadow: 0 3px 8px rgba(245, 87, 108, 0.3);
+    }
+    
+    .btn-danger {
+        background: linear-gradient(135deg, #1b113eff 0%, #6f25acff 100%);
+        border: none;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-danger:hover {
+        transform: scale(1.05);
+        box-shadow: 0 3px 8px rgba(250, 112, 154, 0.3);
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        border: none;
+        color: #495057;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+    
+    .no-results-message {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        border: none;
+        border-radius: 10px;
+        padding: 1.5rem;
+        font-weight: 500;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="page-header">
+        <h2>📋 Liste des clients</h2>
+    </div>
+    
+    <a href="{{ path('app_clients_new') }}" class="btn btn-primary mb-3">➕ Ajouter un client</a>
+
+    {% if singleTier %}
+        <div class="card client-card">
+            <div class="card-body">
+                {% set client = clients|first %}
+                <h4 class="card-title">{{ client.nom }} {{ client.prenom }}</h4>
+                <p class="card-text"><strong>Email:</strong> {{ client.email ?? 'N/A' }}</p>
+                <p class="card-text"><strong>Téléphone:</strong> {{ client.telephone ?? 'N/A' }}</p>
+                <p class="card-text"><strong>Adresse:</strong> {{ client.adresse ?? 'N/A' }}</p>
+                <a href="{{ path('app_factures_list') }}" class="btn btn-secondary">⬅️ Retour</a>
+            </div>
+        </div>
+    {% else %}
+        {# 🔍 Barre de recherche stylisée #}
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" 
+                   id="searchInput" 
+                   class="form-control search-input" 
+                   placeholder="Rechercher par nom, prénom, email, téléphone ou adresse...">
+        </div>
+
+        <div class="table-container">
+            <table class="table table-bordered table-striped align-middle" id="clientsTable">
+                <thead class="text-center">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nom</th>
+                        <th>Prénom</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Adresse</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for client in clients %}
+                        <tr>
+                            <td class="text-center"><strong>{{ client.id }}</strong></td>
+                            <td>{{ client.nom }}</td>
+                            <td>{{ client.prenom ?? 'N/A' }}</td>
+                            <td>{{ client.email ?? 'N/A' }}</td>
+                            <td>{{ client.telephone ?? 'N/A' }}</td>
+                            <td>{{ client.adresse ?? 'N/A' }}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{{ path('app_clients_edit', { id: client.id }) }}" 
+                                       class="btn btn-sm btn-warning">
+                                        ✏️ Modifier
+                                    </a>
+
+                                    <form method="post" 
+                                          action="{{ path('app_clients_delete', { id: client.id }) }}" 
+                                          style="display:inline-block; margin: 0;"
+                                          onsubmit="return confirm('Voulez-vous vraiment supprimer ce client ?');">
+       <input type="hidden" 
+       name="_token" 
+       value="{{ csrf_token('submit') }}" >
+
+
+                                        <button class="btn btn-sm btn-danger">🗑 Supprimer</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">
+                                Aucun client trouvé.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# Message si aucun résultat trouvé #}
+        <div id="noResults" class="alert no-results-message text-center" style="display: none;">
+            ⚠️ Aucun client ne correspond à votre recherche.
+        </div>
+
+        <a href="{{ path('app_facture_create') }}" class="btn btn-primary mt-3">
+            🧾 Créer une facture
+        </a>
+    {% endif %}
+</div>
+
+{# 🔹 Script de recherche en temps réel #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const table = document.getElementById('clientsTable');
+    const noResults = document.getElementById('noResults');
+    
+    if (searchInput && table) {
+        searchInput.addEventListener('keyup', function() {
+            const filter = this.value.toLowerCase().trim();
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            let visibleCount = 0;
+            
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                
+                // Ignorer la ligne "Aucun client trouvé"
+                if (row.cells[0].getAttribute('colspan')) {
+                    continue;
+                }
+                
+                const nom = row.cells[1].textContent.toLowerCase();
+                const prenom = row.cells[2].textContent.toLowerCase();
+                const email = row.cells[3].textContent.toLowerCase();
+                const telephone = row.cells[4].textContent.toLowerCase();
+                const adresse = row.cells[5].textContent.toLowerCase();
+                
+                const match = nom.includes(filter) || 
+                            prenom.includes(filter) || 
+                            email.includes(filter) || 
+                            telephone.includes(filter) || 
+                            adresse.includes(filter);
+                
+                if (match) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+            
+            // Afficher/masquer le message "Aucun résultat"
+            if (visibleCount === 0 && filter !== '') {
+                noResults.style.display = 'block';
+                table.parentElement.style.display = 'none';
+            } else {
+                noResults.style.display = 'none';
+                table.parentElement.style.display = 'block';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

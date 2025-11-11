@@ -1,0 +1,534 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Liste des Catalogues{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #1b113eff 0%, #4d256dff 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+    }
+
+    .page-header .breadcrumb {
+        background: transparent;
+        margin-bottom: 0;
+        padding: 0;
+    }
+
+    .page-header .breadcrumb-item a {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+    }
+
+    .page-header .breadcrumb-item.active {
+        color: white;
+    }
+
+    .stats-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+        transition: transform 0.2s;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .stats-card .icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .stats-card.primary .icon {
+        background: linear-gradient(135deg, #1b113eff 0%, #4d256dff 100%);
+        color: white;
+    }
+
+    .stats-card.success .icon {
+        background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+        color: white;
+    }
+
+    .stats-card.warning .icon {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        color: #856404;
+    }
+
+    .stats-card.info .icon {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        color: #0c5460;
+    }
+
+    .stats-card .value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .stats-card .label {
+        color: #718096;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .table-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .table-card .card-header {
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .table-card .card-header h5 {
+        margin: 0;
+        color: #2d3748;
+        font-weight: 600;
+    }
+
+    table.dataTable thead th {
+        background: linear-gradient(135deg, #1b113eff 0%, #4d256dff 100%);
+        color: white !important;
+        font-weight: 600;
+        border: none !important;
+        padding: 1rem 0.75rem;
+    }
+
+    table.dataTable tbody tr {
+        transition: all 0.2s;
+    }
+
+    table.dataTable tbody tr:hover {
+        background-color: #f7fafc !important;
+        transform: scale(1.01);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    table.dataTable tbody td {
+        padding: 0.85rem 0.75rem;
+        vertical-align: middle;
+    }
+
+    .badge-custom {
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+
+    .badge-success-custom {
+        background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+        color: #155724;
+    }
+
+    .badge-danger-custom {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: #721c24;
+    }
+
+    .dt-buttons {
+        margin-bottom: 1rem;
+    }
+
+    .dt-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border: none !important;
+        padding: 0.5rem 1rem !important;
+        border-radius: 6px !important;
+        margin-right: 0.5rem !important;
+        transition: all 0.2s !important;
+    }
+
+    .dt-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4) !important;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        border: 2px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s;
+    }
+
+    .dataTables_wrapper .dataTables_filter input:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .dataTables_wrapper .dataTables_length select {
+        border: 2px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+    }
+
+    .action-buttons .btn {
+        padding: 0.4rem 0.8rem;
+        margin: 0 0.2rem;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .action-buttons .btn:hover {
+        transform: translateY(-2px);
+    }
+
+    .price-badge {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        padding: 0.3rem 0.7rem;
+        border-radius: 15px;
+        font-weight: 600;
+        color: #856404;
+    }
+
+    .marge-positive {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    .marge-negative {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+        
+        .stats-card {
+            margin-bottom: 1rem;
+        }
+    }
+
+    @media print {
+        .page-header .btn,
+        .dt-buttons,
+        .action-buttons,
+        .dataTables_filter,
+        .dataTables_length,
+        .dataTables_info,
+        .dataTables_paginate {
+            display: none !important;
+        }
+
+        .page-header {
+            background: #667eea !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        table.dataTable thead th {
+            background: #667eea !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .stats-card {
+            break-inside: avoid;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-4">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-book"></i> Gestion des Catalogues</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Accueil</a></li>
+                            <li class="breadcrumb-item active">Catalogues</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button type="button" onclick="window.location.href='/catalogue/new'" class="btn btn-light btn-lg me-2">
+                        <i class="fas fa-plus"></i> Nouveau Catalogue
+                    </button>
+                    <button type="button" onclick="window.print()" class="btn btn-success btn-lg">
+                        <i class="fas fa-print"></i> Imprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="stats-card primary">
+                <div class="d-flex align-items-center">
+                    <div class="icon">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <div class="ms-3 flex-grow-1">
+                        <p class="label">Total Articles</p>
+                        <h3 class="value">{{ catalogues|length }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stats-card success">
+                <div class="d-flex align-items-center">
+                    <div class="icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="ms-3 flex-grow-1">
+                        <p class="label">En Vente</p>
+                        <h3 class="value">{{ catalogues|filter(c => c.etatVente)|length }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stats-card warning">
+                <div class="d-flex align-items-center">
+                    <div class="icon">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <div class="ms-3 flex-grow-1">
+                        <p class="label">En Achat</p>
+                        <h3 class="value">{{ catalogues|filter(c => c.etatAchat)|length }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stats-card info">
+                <div class="d-flex align-items-center">
+                    <div class="icon">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <div class="ms-3 flex-grow-1">
+                        <p class="label">Catégories</p>
+                        <h3 class="value">
+                            {% set types = [] %}
+                            {% for catalogue in catalogues %}
+                                {% if catalogue.typecata not in types %}
+                                    {% set types = types|merge([catalogue.typecata]) %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ types|length }}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="table-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-list"></i> Liste Complète des Catalogues</h5>
+            <div class="text-muted">
+                <small><i class="far fa-clock"></i> Dernière mise à jour : {{ 'now'|date('d/m/Y H:i') }}</small>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table id="cataloguesTable" class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Référence</th>
+                        <th>Code Barre</th>
+                        <th>Type</th>
+                        <th>Désignation</th>
+                        <th>Achat</th>
+                        <th>Vente</th>
+                        <th>Prix Achat</th>
+                        <th>Prix Vente</th>
+                        <th>Prix Min</th>
+                        <th>Marge</th>
+                        <th>Unité</th>
+                        <th>Date Création</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for catalogue in catalogues %}
+                        <tr>
+                            <td><strong>#{{ catalogue.id }}</strong></td>
+                            <td>
+                                <span class="badge bg-primary">{{ catalogue.refecata }}</span>
+                            </td>
+                            <td>
+                                {% if catalogue.codebarr %}
+                                    <i class="fas fa-barcode"></i> {{ catalogue.codebarr }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ catalogue.typecata }}</span>
+                            </td>
+                            <td>
+                                <strong>{{ catalogue.designation }}</strong>
+                                {% if catalogue.description %}
+                                    <br><small class="text-muted">{{ catalogue.description|slice(0, 50) }}{% if catalogue.description|length > 50 %}...{% endif %}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if catalogue.etatAchat %}
+                                    <span class="badge-custom badge-success-custom">
+                                        <i class="fas fa-check"></i> Oui
+                                    </span>
+                                {% else %}
+                                    <span class="badge-custom badge-danger-custom">
+                                        <i class="fas fa-times"></i> Non
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if catalogue.etatVente %}
+                                    <span class="badge-custom badge-success-custom">
+                                        <i class="fas fa-check"></i> Oui
+                                    </span>
+                                {% else %}
+                                    <span class="badge-custom badge-danger-custom">
+                                        <i class="fas fa-times"></i> Non
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="price-badge">{{ catalogue.prixAchat|number_format(2, ',', ' ') }} MAD</span>
+                            </td>
+                            <td>
+                                <span class="price-badge">{{ catalogue.prixVente|number_format(2, ',', ' ') }} MAD</span>
+                            </td>
+                            <td>
+                                <span class="price-badge">{{ catalogue.prixVenteMin|number_format(2, ',', ' ') }} MAD</span>
+                            </td>
+                            <td>
+                                {% set margeValue = catalogue.marge %}
+                                <span class="{{ margeValue >= 0 ? 'marge-positive' : 'marge-negative' }}">
+                                    <i class="fas fa-{{ margeValue >= 0 ? 'arrow-up' : 'arrow-down' }}"></i>
+                                    {{ margeValue|number_format(2) }}%
+                                </span>
+                            </td>
+                            <td>{{ catalogue.uniteMesure }}</td>
+                            <td>
+                                <small>
+                                    <i class="far fa-calendar-alt"></i>
+                                    {{ catalogue.dateCrea ? catalogue.dateCrea|date('d/m/Y') : '-' }}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button type="button" onclick="window.location.href='/catalogue/{{ catalogue.id }}/show'" class="btn btn-sm btn-info" title="Voir">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" onclick="window.location.href='/catalogue/{{ catalogue.id }}/edit'" class="btn btn-sm btn-warning" title="Modifier">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete({{ catalogue.id }})" title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="14" class="text-center py-5">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">Aucun catalogue disponible</p>
+                                <button type="button" onclick="window.location.href='/catalogue/new'" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Créer un catalogue
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+  $(document).ready(function() {
+    if (!$.fn.DataTable.isDataTable('#cataloguesTable')) {
+        $('#cataloguesTable').DataTable({
+            dom: 'Bfrtip',
+            buttons: [
+                { extend: 'copy', text: '<i class="fas fa-copy"></i> Copier', className: 'btn-primary' },
+                { extend: 'excel', text: '<i class="fas fa-file-excel"></i> Excel', className: 'btn-success' },
+                { extend: 'pdf', text: '<i class="fas fa-file-pdf"></i> PDF', className: 'btn-danger' },
+                { extend: 'print', text: '<i class="fas fa-print"></i> Imprimer', className: 'btn-info' }
+            ],
+            pageLength: 25,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tous"]],
+            language: {
+                url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json"
+            },
+            order: [[0, 'desc']],
+            responsive: true,
+            columnDefs: [{ targets: -1, orderable: false }]
+        });
+    }
+});
+
+
+    function confirmDelete(id) {
+        if (confirm('Êtes-vous sûr de vouloir supprimer ce catalogue ?')) {
+            // Ajoutez ici votre logique de suppression
+            fetch(`/catalogue/${id}/delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Erreur lors de la suppression');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Erreur lors de la suppression');
+            });
+        }
+    }
+</script>
+{% endblock %}

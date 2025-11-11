@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}📥 Emails reçus{% endblock %}
+
+{% block body %}
+<div class="container mt-4">
+    <h2 class="mb-4">📥 Emails reçus</h2>
+
+    {% if emails is empty %}
+        <div class="alert alert-info">Aucun e-mail reçu pour le moment.</div>
+    {% else %}
+        <table class="table table-striped table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>📅 Reçu le</th>
+                    <th>👤 Expéditeur</th>
+                    <th>📄 Sujet</th>
+                    <th>📬 Contenu</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mail in emails %}
+                    <tr>
+                        <td>{{ mail.receivedAt|date('d/m/Y H:i') }}</td>
+                        <td>{{ mail.from }}</td>
+                        <td>{{ mail.subject }}</td>
+                        <td>{{ mail.body }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,560 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Modifier le catalogue{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+    }
+
+    .page-header .breadcrumb {
+        background: transparent;
+        margin-bottom: 0;
+        padding: 0;
+    }
+
+    .page-header .breadcrumb-item a {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+    }
+
+    .page-header .breadcrumb-item.active {
+        color: white;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .form-card .card-header {
+        border-bottom: 3px solid #f5576c;
+        padding-bottom: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .form-card .card-header h4 {
+        margin: 0;
+        color: #2d3748;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .form-card .card-header .icon {
+        width: 45px;
+        height: 45px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.3rem;
+    }
+
+    .info-badge {
+        background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+        padding: 1rem 1.25rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        border-left: 4px solid #f5576c;
+    }
+
+    .info-badge i {
+        font-size: 1.5rem;
+        color: #f5576c;
+    }
+
+    .info-badge .content {
+        flex: 1;
+    }
+
+    .info-badge .content .id-badge {
+        background: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 600;
+        color: #f5576c;
+        font-size: 0.9rem;
+        display: inline-block;
+    }
+
+    .info-badge .content p {
+        margin: 0.5rem 0 0 0;
+        color: #5a67d8;
+        font-size: 0.9rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-label i {
+        color: #f5576c;
+    }
+
+    .form-label .required {
+        color: #e53e3e;
+        font-size: 1.2rem;
+    }
+
+    .form-control {
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: #f5576c;
+        box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
+        outline: none;
+    }
+
+    .form-control::placeholder {
+        color: #a0aec0;
+    }
+
+    textarea.form-control {
+        resize: vertical;
+        min-height: 120px;
+    }
+
+    .form-text {
+        color: #718096;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-text i {
+        color: #f5576c;
+    }
+
+    .char-counter {
+        text-align: right;
+        font-size: 0.85rem;
+        color: #a0aec0;
+        margin-top: 0.25rem;
+    }
+
+    .alert {
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+        color: #155724;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #77289eff 0%, #3c1464ff 100%);
+        color: #721c24;
+    }
+
+    .alert i {
+        font-size: 1.5rem;
+    }
+
+    .btn-action-group {
+        display: flex;
+        gap: 1rem;
+        padding-top: 2rem;
+        border-top: 2px solid #e2e8f0;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: none;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #f093fb 0%, #72118fff 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+    .btn-secondary:hover {
+        background: #cbd5e0;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        color: #4a5568;
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #4e0c71ff 0%, #351775ff 100%);
+        color: #721c24;
+    }
+
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(250, 112, 154, 0.4);
+        color: #721c24;
+    }
+
+    .metadata-section {
+        background: #f7fafc;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+
+    .metadata-section h5 {
+        color: #2d3748;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .metadata-section h5 i {
+        color: #f5576c;
+    }
+
+    .metadata-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .metadata-item:last-child {
+        border-bottom: none;
+    }
+
+    .metadata-item .label {
+        color: #718096;
+        font-weight: 500;
+    }
+
+    .metadata-item .value {
+        color: #2d3748;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .form-card {
+            padding: 1.5rem;
+        }
+
+        .btn-action-group {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid px-4">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-12">
+                    <h1><i class="fas fa-edit"></i> Modifier le catalogue</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Accueil</a></li>
+                            <li class="breadcrumb-item"><a href="{{ path('catalogue_list') }}">Catalogues</a></li>
+                            <li class="breadcrumb-item active">Modifier #{{ catalogue.id }}</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-7">
+            
+            {# Messages flash de succès/erreur #}
+            {% for message in app.flashes('success') %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <strong>Succès !</strong> {{ message }}
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+            
+            {% for message in app.flashes('error') %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div>
+                        <strong>Erreur !</strong> {{ message }}
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+
+            <!-- Info Badge -->
+            <div class="info-badge">
+                <i class="fas fa-info-circle"></i>
+                <div class="content">
+                    <div>
+                        Catalogue <span class="id-badge">#{{ catalogue.id }}</span>
+                    </div>
+                    <p>Modifiez les informations de ce catalogue. Les champs marqués d'un astérisque (<span class="text-danger">*</span>) sont obligatoires.</p>
+                </div>
+            </div>
+
+            <!-- Metadata Section -->
+            {% if catalogue.dateCrea %}
+            <div class="metadata-section">
+                <h5><i class="far fa-clock"></i> Informations complémentaires</h5>
+                <div class="metadata-item">
+                    <span class="label"><i class="fas fa-calendar-plus"></i> Date de création</span>
+                    <span class="value">{{ catalogue.dateCrea|date('d/m/Y à H:i') }}</span>
+                </div>
+                {% if catalogue.refecata %}
+                <div class="metadata-item">
+                    <span class="label"><i class="fas fa-barcode"></i> Référence</span>
+                    <span class="value">{{ catalogue.refecata }}</span>
+                </div>
+                {% endif %}
+                {% if catalogue.typecata %}
+                <div class="metadata-item">
+                    <span class="label"><i class="fas fa-tag"></i> Type</span>
+                    <span class="value">{{ catalogue.typecata }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Form Card -->
+            <div class="form-card">
+                <div class="card-header">
+                    <h4>
+                        <div class="icon">
+                            <i class="fas fa-pen"></i>
+                        </div>
+                        Modifier les informations
+                    </h4>
+                </div>
+
+                <form method="post" id="catalogueForm">
+                    
+                    <!-- Nom du catalogue -->
+                    <div class="form-group">
+                        <label for="nom" class="form-label">
+                            <i class="fas fa-tag"></i>
+                            Nom du catalogue
+                            <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="nom" 
+                            name="nom" 
+                            value="{{ catalogue.designation }}" 
+                            class="form-control" 
+                            placeholder="Ex: Catalogue Produits 2025"
+                            required
+                            maxlength="100"
+                            oninput="updateCharCounter('nom', 100)">
+                        <small class="form-text">
+                            <i class="fas fa-lightbulb"></i>
+                            Choisissez un nom clair et descriptif pour votre catalogue
+                        </small>
+                        <div id="nom-counter" class="char-counter">0 / 100 caractères</div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <label for="description" class="form-label">
+                            <i class="fas fa-align-left"></i>
+                            Description
+                            <span class="text-muted" style="font-weight: normal; font-size: 0.9rem;">(facultatif)</span>
+                        </label>
+                        <textarea 
+                            id="description" 
+                            name="description" 
+                            class="form-control" 
+                            rows="5"
+                            placeholder="Ajoutez une description détaillée de votre catalogue..."
+                            maxlength="500"
+                            oninput="updateCharCounter('description', 500)">{{ catalogue.description }}</textarea>
+                        <small class="form-text">
+                            <i class="fas fa-lightbulb"></i>
+                            Décrivez le contenu et l'objectif de ce catalogue
+                        </small>
+                        <div id="description-counter" class="char-counter">0 / 500 caractères</div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="btn-action-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            Enregistrer les modifications
+                        </button>
+                        <a href="{{ path('catalogue_list') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i>
+                            Annuler
+                        </a>
+                        <button type="button" class="btn btn-danger ms-auto" onclick="confirmDelete()">
+                            <i class="fas fa-trash"></i>
+                            Supprimer
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+    // Character counter function
+    function updateCharCounter(fieldId, maxLength) {
+        const field = document.getElementById(fieldId);
+        const counter = document.getElementById(fieldId + '-counter');
+        const currentLength = field.value.length;
+        counter.textContent = currentLength + ' / ' + maxLength + ' caractères';
+        
+        // Change color if approaching limit
+        if (currentLength > maxLength * 0.9) {
+            counter.style.color = '#e53e3e';
+        } else if (currentLength > maxLength * 0.7) {
+            counter.style.color = '#dd6b20';
+        } else {
+            counter.style.color = '#a0aec0';
+        }
+    }
+
+    // Form validation
+    document.getElementById('catalogueForm').addEventListener('submit', function(e) {
+        const nomField = document.getElementById('nom');
+        
+        if (!nomField.value.trim()) {
+            e.preventDefault();
+            nomField.focus();
+            nomField.classList.add('is-invalid');
+            
+            // Show error message
+            if (!document.getElementById('nom-error')) {
+                const errorDiv = document.createElement('div');
+                errorDiv.id = 'nom-error';
+                errorDiv.className = 'text-danger mt-1';
+                errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Le nom du catalogue est obligatoire';
+                nomField.parentNode.appendChild(errorDiv);
+            }
+        }
+    });
+
+    // Remove error on input
+    document.getElementById('nom').addEventListener('input', function() {
+        this.classList.remove('is-invalid');
+        const errorDiv = document.getElementById('nom-error');
+        if (errorDiv) {
+            errorDiv.remove();
+        }
+    });
+
+    // Initialize character counters
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCharCounter('nom', 100);
+        updateCharCounter('description', 500);
+    });
+
+    // Add animation on form submit
+    document.getElementById('catalogueForm').addEventListener('submit', function(e) {
+        if (this.checkValidity()) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+            submitBtn.disabled = true;
+        }
+    });
+
+    // Delete confirmation
+    function confirmDelete() {
+        if (confirm('⚠️ Êtes-vous sûr de vouloir supprimer ce catalogue ?\n\nCette action est irréversible.')) {
+            // Ajoutez ici votre logique de suppression
+            fetch('/catalogue/{{ catalogue.id }}/delete', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = '{{ path('catalogue_list') }}';
+                } else {
+                    alert('❌ Erreur lors de la suppression');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Erreur lors de la suppression');
+            });
+        }
+    }
+</script>
+{% endblock %}

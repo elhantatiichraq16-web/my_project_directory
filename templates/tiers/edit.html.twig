@@ -1,0 +1,372 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Modifier le client{% endblock %}
+
+{% block stylesheets %}
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: "Inter", sans-serif;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .edit-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 15px;
+    }
+
+    /* En-tête de la page */
+    .page-header {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .page-header h1 {
+        font-weight: 700;
+        color: #2d3748;
+        margin: 0;
+        font-size: 2rem;
+    }
+
+    .page-header .breadcrumb {
+        background: none;
+        padding: 10px 0 0 0;
+        margin: 0;
+        justify-content: center;
+    }
+
+    /* Cards */
+    .card {
+        border: none;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+        height: 100%;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 20px 20px 0 0 !important;
+        padding: 20px 25px;
+        border: none;
+    }
+
+    .card-header h3 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.3rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .card-body {
+        padding: 30px 25px;
+    }
+
+    /* Formulaire */
+    .form-section {
+        margin-bottom: 25px;
+    }
+
+    .form-section-title {
+        font-weight: 600;
+        color: #667eea;
+        font-size: 1.1rem;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f0f0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #4a5568;
+        display: block;
+    }
+
+    input.form-control, 
+    select.form-select, 
+    textarea.form-control {
+        border-radius: 12px;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+
+    input.form-control:focus, 
+    select.form-select:focus, 
+    textarea.form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+
+    textarea.form-control {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+    /* Boutons d'action */
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: space-between;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .btn {
+        border-radius: 12px;
+        font-weight: 500;
+        padding: 12px 30px;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-secondary {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+    .btn-secondary:hover {
+        background: #cbd5e0;
+        transform: translateY(-2px);
+    }
+
+    /* Résumé du client */
+    .client-summary {
+        position: sticky;
+        top: 20px;
+    }
+
+    .info-item {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+        border-left: 4px solid #667eea;
+    }
+
+    .info-item:hover {
+        background: #eef2ff;
+        transform: translateX(5px);
+    }
+
+    .info-label {
+        font-weight: 600;
+        color: #667eea;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 5px;
+        display: block;
+    }
+
+    .info-value {
+        color: #2d3748;
+        font-size: 1rem;
+        word-break: break-word;
+    }
+
+    .info-value.empty {
+        color: #a0aec0;
+        font-style: italic;
+    }
+
+    /* Alerte d'information */
+    .alert-info-custom {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        .client-summary {
+            position: relative;
+            top: 0;
+            margin-top: 30px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container edit-container">
+    <!-- En-tête de la page -->
+    <div class="page-header">
+        <h1>✏️ Modification du Client</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ path('app_clients_list') }}">Clients</a></li>
+                <li class="breadcrumb-item active">Modifier</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="row g-4">
+        <!-- Colonne gauche : Formulaire d'édition -->
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header">
+                    <h3>📝 Formulaire de modification</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert-info-custom">
+                        <span style="font-size: 1.5rem;">ℹ️</span>
+                        <span>Modifiez les informations du client ci-dessous. Les champs marqués sont obligatoires.</span>
+                    </div>
+
+                    {{ form_start(form) }}
+                    
+                    <!-- Section Identité -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            👤 Identité
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form_row(form.nom) }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ form_row(form.prenom) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section Contact -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            📞 Contact
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form_row(form.email) }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ form_row(form.telephone) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section Adresse -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            📍 Adresse
+                        </div>
+                        {{ form_row(form.adresse) }}
+                    </div>
+
+                    <!-- Autres champs du formulaire -->
+                    <div class="form-section">
+                        {{ form_rest(form) }}
+                    </div>
+
+                    <!-- Boutons d'action -->
+                    <div class="action-buttons">
+                        <button type="submit" class="btn btn-success">
+                            <span>💾</span>
+                            <span>Enregistrer les modifications</span>
+                        </button>
+                        <a href="{{ path('app_clients_list') }}" class="btn btn-secondary">
+                            <span>❌</span>
+                            <span>Annuler</span>
+                        </a>
+                    </div>
+
+                    {{ form_end(form) }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonne droite : Aperçu des informations actuelles -->
+        <div class="col-lg-5">
+            <div class="client-summary">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>👁️ Informations actuelles</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-item">
+                            <span class="info-label">Nom complet</span>
+                            <div class="info-value {% if not client.nom and not client.prenom %}empty{% endif %}">
+                                {{ client.nom ?? 'Non renseigné' }} {{ client.prenom ?? '' }}
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <span class="info-label">Adresse e-mail</span>
+                            <div class="info-value {% if not client.email %}empty{% endif %}">
+                                {{ client.email ?? 'Non renseigné' }}
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <span class="info-label">Numéro de téléphone</span>
+                            <div class="info-value {% if not client.telephone %}empty{% endif %}">
+                                {{ client.telephone ?? 'Non renseigné' }}
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <span class="info-label">Adresse postale</span>
+                            <div class="info-value {% if not client.adresse %}empty{% endif %}">
+                                {{ client.adresse ?? 'Non renseigné' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

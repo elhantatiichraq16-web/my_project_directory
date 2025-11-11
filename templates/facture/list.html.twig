@@ -1,0 +1,1355 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Liste des Factures{% endblock %}
+
+{% block stylesheets %}
+
+    <!-- AG-Grid CSS from CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/styles/ag-grid.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/styles/ag-theme-material.css" />
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css"
+  crossorigin="anonymous"
+/>
+
+{% endblock %}
+
+{% block activeFacture %}class="active"{% endblock %}
+{% block activeVentes2 %}show-m{% endblock %}
+
+{% block body %}
+<div class="page-content">
+    <div class="container-fluid">
+        <!-- Action Bar -->
+        <div class="row justify-content-md-center mb-2 d-flex align-items-center sticky-top" id="action_bar">
+            <div class="col-md-6">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="#"><i class="fa-solid fa-house"></i></a></li>
+                        <li class="breadcrumb-item"><a href="#">Ventes</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Facture</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="col-md-6 text-end">
+                <a href="{{ path('app_facture_create') }}" id="nouveau" class="btn btn-info">
+                    <i class="fas fa-plus"></i> Nouveau
+                </a>
+                <button type="button" id="export-btn" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Exporter
+                </button>
+                <button type="button" id="import-btn" class="btn btn-success">
+                    <i class="fas fa-upload"></i> Importer
+                </button>
+                <button type="button" id="email-history-btn" class="btn btn-outline-info">
+    <i class="fas fa-history"></i> Historique emails
+</button>
+                <a href="{{ path('app_facture') }}" id="retour" class="btn btn-light">
+                    <i class="fas fa-chevron-left"></i> Retour
+                </a>
+            </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="row justify-content-md-center mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header" style="background:white;">
+                        <div class="row d-flex align-items-center">
+                            <div class="col-md-4">
+                                <h3 class="card-title" style="font-size:20px;">Liste des factures</h3>
+                            </div>
+                            <div class="col-md-8 text-end">
+                                <form id="search-form" class="d-inline-flex align-items-center me-2" autocomplete="off">
+                                    <input type="search" id="search-input" class="form-control form-control-sm" placeholder="Rechercher..." style="max-width:220px;">
+                                    <button type="submit" class="btn btn-primary btn-sm ms-2">
+                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                    </button>
+                                    <button type="button" id="search-reset" class="btn btn-outline-secondary btn-sm ms-1">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </form>
+
+                                <!-- Select All Checkbox -->
+                                <div class="checkbox-wrapper-46" style="margin-right:5px;display:inline-block;">
+                                    <input class="inp-cbx" id="cbx-all" type="checkbox" />
+                                    <label class="cbx" for="cbx-all"><span>
+                                        <svg width="12px" height="10px" viewbox="0 0 12 10">
+                                        <polyline points="1.5 6 4.5 9 10.5 1"></polyline>
+                                        </svg></span><span>Sélectionner tout</span>
+                                    </label>
+                                </div>
+
+                                <!-- Action Dropdown -->
+                                <div class="btn-group" role="group">
+                                    <button type="button" id="actionDoc" class="btn dropdown-toggle btn-prim" data-bs-toggle="dropdown">
+                                        Action groupé
+                                    </button>
+                                    <div class="dropdown-menu" id="dropdown-options-actions"></div>
+                                </div>
+
+                                <!-- Column Selection Dropdown -->
+                                <div class="btn-group">
+                                    <button type="button" class="btn dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                                        <i class="fa-solid fa-table"></i>
+                                        <span>Colonnes</span>
+                                    </button>
+                                    <div class="dropdown-menu" id="columnSelection">
+                                        {% for col in ['reference', 'tier', 'statut', 'date_creation', 'date_validite', 'tva', 'totalHt', 'totalTTC', 'devise', 'notes', 'date_modification', 'remiseGlobale'] %}
+                                            <div class="dropdown-item checkbox-wrapper-46">
+                                                <input class="inp-cbx" id="cbx-{{ col }}" type="checkbox" data-column="{{ col }}" checked />
+                                                <label class="cbx" for="cbx-{{ col }}"><span>
+                                                    <svg width="12px" height="10px" viewBox="0 0 12 10">
+                                                        <polyline points="1.5 6 4.5 9 10.5 1"></polyline>
+                                                    </svg></span>
+                                                    <span>{{ col|replace({'_': ' '})|capitalize }}</span>
+                                                </label>
+                                            </div>
+                                        {% endfor %}
+                                        <div class="dropdown-divider"></div>
+                                        <button class="dropdown-item text-primary" id="savePreferences">
+                                            <i class="fa-solid fa-floppy-disk"></i> Enregistrer mes préférences
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Status Filter -->
+                                <div class="btn-group" role="group" id="etat-facture" style="margin-right:10px;">
+                                    <input type="radio" class="btn-check" name="etat" id="etat1" autocomplete="off" value="1" checked>
+                                    <label class="btn btn-outline-secondary" for="etat1">Actifs</label>
+                                    <input type="radio" class="btn-check" name="etat" id="etat0" autocomplete="off" value="0">
+                                    <label class="btn btn-outline-secondary" for="etat0">Supprimés</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AG-Grid Table -->
+                    <div class="card-body">
+                        <div id="list_table" class="ag-theme-material" style="height: 600px; width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+ <!-- AG-Grid JavaScript from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/dist/ag-grid-community.min.js"></script>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // Utility function to escape HTML and prevent XSS
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Grid state management
+        const gridState = { 
+            status: 1, 
+            gridApi: null,
+            isLoading: false,
+            searchTerm: ''
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeStickyHeader();
+            initializeGrid();
+            initializeEventListeners();
+        });
+
+        // Sticky header on scroll
+        function initializeStickyHeader() {
+            window.addEventListener('scroll', () => {
+                const stickyHeader = document.getElementById('action_bar');
+                if (stickyHeader) {
+                    stickyHeader.classList.toggle('sticky-active', window.scrollY > 0);
+                }
+            });
+        }
+
+        // Custom Boolean Filter for Tier column
+        class BooleanFilter {
+            init(params) {
+                this.valueGetter = params.valueGetter;
+                this.filterText = 'null';
+                this.params = params;
+                this.gui = document.createElement('div');
+                this.gui.style.padding = '10px';
+                this.gui.innerHTML = `
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" id="filter-true" name="filterType" value="true">
+                        <label class="form-check-label" for="filter-true">Entreprise</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" id="filter-false" name="filterType" value="false">
+                        <label class="form-check-label" for="filter-false">Particulier</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" class="form-check-input" id="filter-null" name="filterType" value="null" checked>
+                        <label class="form-check-label" for="filter-null">Aucun filtre</label>
+                    </div>
+                `;
+                this.gui.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('change', this.onFilterChanged.bind(this));
+                });
+            }
+
+            getGui() { return this.gui; }
+
+            doesFilterPass(params) {
+                if (this.filterText === 'null') return true;
+                const value = this.valueGetter(params.node);
+                return this.filterText === String(value);
+            }
+
+            isFilterActive() { 
+                return this.filterText !== null && this.filterText !== 'null'; 
+            }
+
+            onFilterChanged(event) {
+                this.filterText = event.target.value;
+                this.params.filterChangedCallback();
+            }
+
+            getModel() { 
+                return this.filterText !== 'null' ? { value: this.filterText } : null; 
+            }
+
+            setModel(model) {
+                this.filterText = model ? model.value : 'null';
+                const radio = this.gui.querySelector(`#filter-${this.filterText}`);
+                if (radio) radio.checked = true;
+            }
+        }
+
+        function createDataSource() {
+            return {
+                getRows: (params) => {
+                    const query = new URLSearchParams({
+                        startRow: params.startRow,
+                        endRow: params.endRow,
+                        filterModel: JSON.stringify(params.filterModel || {}),
+                        etat: gridState.status,
+                        search: gridState.searchTerm || ''
+                    });
+
+                    if (gridState.gridApi) {
+                        gridState.gridApi.showLoadingOverlay();
+                    }
+                    gridState.isLoading = true;
+
+                    fetch(`/facture/get/list/?${query.toString()}`)
+                        .then(res => {
+                            if (!res.ok) throw new Error('Network response was not ok');
+                            return res.json();
+                        })
+                        .then(data => {
+                            const rows = data.rows || [];
+                            gridState.isLoading = false;
+
+                            if (!rows.length) {
+                                if (gridState.gridApi) {
+                                    gridState.gridApi.showNoRowsOverlay();
+                                }
+                                params.successCallback([], 0);
+                            } else {
+                                if (gridState.gridApi) {
+                                    gridState.gridApi.hideOverlay();
+                                }
+                                params.successCallback(rows, data.lastRow ?? -1);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching data:', error);
+                            gridState.isLoading = false;
+                            if (gridState.gridApi) {
+                                gridState.gridApi.hideOverlay();
+                            }
+                            toastr.error('Erreur lors du chargement des données');
+                            params.failCallback();
+                        });
+                }
+            };
+        }
+
+        // Initialize AG-Grid
+        function initializeGrid() {
+            const myGridElement = document.getElementById('list_table');
+
+            const gridOptions = {
+                columnDefs: [
+                    { 
+                        headerName: '', 
+                        checkboxSelection: true, 
+                        field: 'checked', 
+                        maxWidth: 50,
+                        suppressMenu: true,
+                        sortable: false,
+                        filter: false
+                    },
+                    { 
+                        field: "reference", 
+                        headerName: "Référence", 
+                        sortable: true, 
+                        filter: 'agTextColumnFilter', 
+                        flex: 1, 
+                        minWidth: 150 
+                    },
+                    { 
+                        field: "tier", 
+                        headerName: "Tiers", 
+                        sortable: true, 
+                        filter: BooleanFilter, 
+                        flex: 1, 
+                        minWidth: 200,
+                        cellRenderer: params => {
+                            if (!params.value) return '';
+                            try {
+                                const tierData = JSON.parse(params.value);
+                                const safeName = escapeHtml(tierData.name || '');
+                                const safeId = escapeHtml(tierData.id || '');
+                                return `<a href='/tiers/${safeId}' class='blue-link'>${safeName}</a>`;
+                            } catch (e) {
+                                return escapeHtml(params.value);
+                            }
+                        }
+                    },
+                    { 
+                        field: "statut", 
+                        headerName: "Statut", 
+                        sortable: true, 
+                        filter: 'agTextColumnFilter', 
+                        flex: 1, 
+                        minWidth: 130,
+                        cellRenderer: params => {
+                            if (!params.value || params.value.toString().trim() === '') {
+                                return '<span class="text-muted">-</span>';
+                            }
+                            const badgeClass = params.value === "Pro" ? "bg-primary" : "bg-warning";
+                            return `<span class="badge ${badgeClass}">${escapeHtml(params.value)}</span>`;
+                        }
+                    },
+                    { 
+                        field: "date_creation", 
+                        headerName: "Date de création", 
+                        sortable: true, 
+                        filter: 'agDateColumnFilter', 
+                        flex: 1, 
+                        minWidth: 160,
+                        cellRenderer: params => params.value ? new Date(params.value).toLocaleDateString('fr-FR') : ''
+                    },
+                    { 
+                        field: "date_validite", 
+                        headerName: "Date de validité", 
+                        sortable: true, 
+                        filter: 'agDateColumnFilter', 
+                        flex: 1, 
+                        minWidth: 160,
+                        cellRenderer: params => params.value ? new Date(params.value).toLocaleDateString('fr-FR') : ''
+                    },
+                    { 
+                        field: "totalHt", 
+                        headerName: "Total HT", 
+                        sortable: true, 
+                        filter: 'agNumberColumnFilter', 
+                        flex: 1, 
+                        minWidth: 130,
+                        cellRenderer: params => {
+                            const value = parseFloat(params.value);
+                            if (isNaN(value) || params.value === null || params.value === undefined) {
+                                return '<span class="text-muted">0.00 MAD</span>';
+                            }
+                            return `${value.toFixed(2)} MAD`;
+                        }
+                    },
+                    { 
+                        field: "totalTTC", 
+                        headerName: "Total TTC", 
+                        sortable: true, 
+                        filter: 'agNumberColumnFilter', 
+                        flex: 1, 
+                        minWidth: 130,
+                        cellRenderer: params => {
+                            const value = parseFloat(params.value);
+                            if (isNaN(value) || params.value === null || params.value === undefined) {
+                                return '<span class="text-muted">0.00 MAD</span>';
+                            }
+                            return `${value.toFixed(2)} MAD`;
+                        }
+                    },
+                    { 
+                        field: "tva", 
+                        headerName: "TVA total", 
+                        sortable: true, 
+                        filter: 'agNumberColumnFilter', 
+                        flex: 1, 
+                        minWidth: 130,
+                        cellRenderer: params => {
+                            const value = parseFloat(params.value);
+                            if (isNaN(value) || params.value === null || params.value === undefined) {
+                                return '<span class="text-muted">0.00 MAD</span>';
+                            }
+                            return `${value.toFixed(2)} MAD`;
+                        }
+                    },
+                    { 
+                        field: "devise", 
+                        headerName: "Devise", 
+                        sortable: true, 
+                        filter: 'agTextColumnFilter', 
+                        flex: 1, 
+                        minWidth: 100 
+                    },
+                    { 
+                        field: "notes", 
+                        headerName: "Notes", 
+                        sortable: false, 
+                        filter: 'agTextColumnFilter', 
+                        flex: 2, 
+                        minWidth: 200,
+                        cellRenderer: params => params.value ? escapeHtml(params.value) : ''
+                    },
+                    { 
+                        field: "remiseGlobale", 
+                        headerName: "Remise globale", 
+                        sortable: true, 
+                        filter: 'agNumberColumnFilter', 
+                        flex: 1, 
+                        minWidth: 130,
+                        cellRenderer: params => {
+                            const value = parseFloat(params.value);
+                            if (isNaN(value) || params.value === null || params.value === undefined) {
+                                return '<span class="text-muted">0.00 %</span>';
+                            }
+                            return `${value.toFixed(2)} %`;
+                        }
+                    },
+                    { 
+                        field: "date_modification", 
+                        headerName: "Date modification", 
+                        sortable: true, 
+                        filter: 'agDateColumnFilter', 
+                        flex: 1, 
+                        minWidth: 160,
+                        cellRenderer: params => params.value ? new Date(params.value).toLocaleDateString('fr-FR') : ''
+                    },
+                    {
+                        headerName: "Actions",
+                        field: "Actions",
+                        flex: 1,
+                        minWidth: 260,
+                        sortable: false,
+                        filter: false,
+                        suppressMenu: true,
+                        valueGetter: params => params.data?.id ?? params.data?.Actions ?? params.value,
+cellRenderer: params => {
+    const rawId = params.value ?? params.data?.id ?? params.data?.Actions;
+    if (!rawId) {
+        return '';
+    }
+
+    const safeId = escapeHtml(String(rawId));
+    const safeRef = escapeHtml(params.data?.reference || '');
+    const showUrl = `/facture/${safeId}`;
+    const editUrl = `/facture/${safeId}/edit`;
+
+    return `
+        <a href="${showUrl}" class="btn btn-sm btn-outline-info me-2">
+            <i class="fa-regular fa-eye"></i>
+        </a>
+        <a href="${editUrl}" class="btn btn-sm btn-outline-warning me-2">
+            <i class="fa-regular fa-pen-to-square"></i>
+        </a>
+        <button type="button" class="btn btn-sm btn-outline-primary me-2 send-email-btn" 
+                data-id="${safeId}" data-reference="${safeRef}" title="Envoyer par email">
+            <i class="fa-solid fa-envelope"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary me-2 email-history-btn" 
+                data-id="${safeId}" data-reference="${safeRef}" title="Historique des emails">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger delete-invoice-btn" data-id="${safeId}">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+    `;
+}
+                    }
+                ],
+                defaultColDef: { 
+                    resizable: true,
+                    sortable: true,
+                    filter: true
+                },
+                rowSelection: 'multiple',
+                pagination: true,
+                paginationPageSize: 20,
+                cacheBlockSize: 20,
+                maxBlocksInCache: 2,
+                rowModelType: 'infinite',
+                datasource: createDataSource(),
+                overlayNoRowsTemplate: '<span class="custom-overlay">Aucune donnée disponible</span>',
+                overlayLoadingTemplate: '<span class="ag-overlay-loading-center">Chargement...</span>',
+                getRowClass: params => params.node.rowIndex % 2 === 0 ? 'even-row' : 'odd-row',
+                onGridReady: (params) => {
+                    gridState.gridApi = params.api;
+                    loadUserPreferences();
+                }
+            };
+
+            agGrid.createGrid(myGridElement, gridOptions);
+        }
+
+        // Initialize all event listeners
+        function initializeEventListeners() {
+            // Prevent dropdown from closing when clicking items
+            document.querySelectorAll('#columnSelection .dropdown-item').forEach(item => {
+                item.addEventListener('click', e => {
+                    if (e.target.id !== 'savePreferences') {
+                        e.stopPropagation();
+                    }
+                });
+            });
+
+            // Select all checkbox
+            document.getElementById('cbx-all')?.addEventListener('change', handleSelectAll);
+
+            // Column visibility toggles
+            document.querySelectorAll('#columnSelection input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', handleColumnVisibility);
+            });
+
+            // Status filter radio buttons
+            document.querySelectorAll('#etat-facture input[name="etat"]').forEach(radio => {
+                radio.addEventListener('change', handleStatusChange);
+            });
+
+            // Save preferences button
+            document.getElementById('savePreferences')?.addEventListener('click', saveUserPreferences);
+
+            document.getElementById('search-form')?.addEventListener('submit', handleSearchSubmit);
+            document.getElementById('search-reset')?.addEventListener('click', handleSearchReset);
+
+            // Action menu
+            initializeActionMenu();
+
+            // Delete buttons delegation
+            document.addEventListener('click', e => {
+                if (e.target.closest('.delete-invoice-btn')) {
+                    const btn = e.target.closest('.delete-invoice-btn');
+                    const invoiceId = btn.dataset.id;
+                    deleteInvoices([{ id: Number(invoiceId) }], false);
+                }
+            });
+// Email buttons
+document.addEventListener('click', e => {
+    if (e.target.closest('.send-email-btn')) {
+        const btn = e.target.closest('.send-email-btn');
+        openEmailModal(btn.dataset.id, btn.dataset.reference);
+    }
+    
+    if (e.target.closest('.email-history-btn')) {
+        const btn = e.target.closest('.email-history-btn');
+        openEmailHistoryModal(btn.dataset.id, btn.dataset.reference);
+    }
+    
+    if (e.target.closest('.view-email-detail-btn')) {
+        const btn = e.target.closest('.view-email-detail-btn');
+        viewEmailDetail(btn.dataset.emailId);
+    }
+});
+
+document.getElementById('sendEmailBtn')?.addEventListener('click', sendEmail);
+        }
+
+        // Event Handlers
+        function handleSelectAll(e) {
+            if (!gridState.gridApi) return;
+            gridState.gridApi.forEachNode(node => node.setSelected(e.target.checked));
+        }
+
+        function handleColumnVisibility(e) {
+            if (!gridState.gridApi) return;
+            const columnId = e.target.dataset.column;
+            gridState.gridApi.setColumnsVisible([columnId], e.target.checked);
+        }
+
+        function handleStatusChange(e) {
+            if (!e.target.checked || !gridState.gridApi) return;
+            gridState.status = Number(e.target.value);
+            gridState.gridApi.setGridOption('datasource', createDataSource());
+            gridState.gridApi.refreshInfiniteCache();
+            renderActionMenu();
+        }
+
+     function handleSearchSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('search-input');
+    if (!gridState.gridApi || !input) return;
+
+    const value = input.value.trim();
+
+    // Si la valeur n’a pas changé, on recharge simplement
+    if (gridState.searchTerm === value) {
+        gridState.gridApi.refreshInfiniteCache();
+        return;
+    }
+
+    gridState.searchTerm = value;
+
+    // ✅ Nouvelle syntaxe compatible AG Grid v31
+    gridState.gridApi.setDatasource(createDataSource());
+}
+
+
+     function handleSearchReset() {
+    const input = document.getElementById('search-input');
+    if (!gridState.gridApi || !input) return;
+
+    input.value = '';
+
+    if (gridState.searchTerm === '') {
+        gridState.gridApi.refreshInfiniteCache();
+        return;
+    }
+
+    gridState.searchTerm = '';
+
+    // ✅ Méthode correcte dans AG-Grid v31+
+    gridState.gridApi.setDatasource(createDataSource());
+}
+
+
+        // Action Menu
+        function initializeActionMenu() {
+            renderActionMenu();
+            const dropdownMenu = document.getElementById('dropdown-options-actions');
+            dropdownMenu?.addEventListener('click', handleActionMenuClick);
+        }
+
+        function renderActionMenu() {
+            const dropdownMenu = document.getElementById('dropdown-options-actions');
+            if (!dropdownMenu) return;
+
+            let html = `<a class="dropdown-item" href="#" data-action="export">
+                <i class="fas fa-download"></i> Exporter la sélection
+            </a>`;
+
+            if (gridState.status === 1) {
+                html += `<a class="dropdown-item" href="#" data-action="delete">
+                    <i class="fas fa-trash"></i> Supprimer la sélection
+                </a>`;
+            } else {
+                html += `<a class="dropdown-item" href="#" data-action="restore">
+                    <i class='fas fa-trash-restore'></i> Restaurer la sélection
+                </a>
+                <a class="dropdown-item" href="#" data-action="delete-permanent">
+                    <i class="fas fa-trash"></i> Supprimer définitivement
+                </a>`;
+            }
+
+            dropdownMenu.innerHTML = html;
+        }
+
+        function handleActionMenuClick(e) {
+            const action = e.target.closest('[data-action]');
+            if (!action) return;
+            e.preventDefault();
+
+            const actionType = action.dataset.action;
+            
+            switch(actionType) {
+                case 'export':
+                    exportSelection();
+                    break;
+                case 'delete':
+                    deleteInvoices(getSelectedRows(), false);
+                    break;
+                case 'delete-permanent':
+                    deleteInvoices(getSelectedRows(), true);
+                    break;
+                case 'restore':
+                    restoreInvoices();
+                    break;
+            }
+        }
+
+        // Grid Operations
+        function getSelectedRows() {
+            return gridState.gridApi ? gridState.gridApi.getSelectedRows() : [];
+        }
+
+        function deleteInvoices(rows, permanent = false) {
+            if (!rows || !rows.length) {
+                toastr.error('Aucune facture sélectionnée');
+                return;
+            }
+
+            const title = 'Êtes-vous sûr ?';
+            const text = permanent 
+                ? 'Vous êtes sur le point de supprimer définitivement des factures. Cette action est irréversible.' 
+                : 'Vous êtes sur le point de supprimer des factures.';
+            const icon = permanent ? 'error' : 'warning';
+
+            Swal.fire({
+                title: title,
+                text: text,
+                icon: icon,
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Oui, supprimer',
+                cancelButtonText: 'Annuler'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                const ids = rows
+                    .map(row => row.id ?? row.Actions ?? row.actions)
+                    .filter(id => id !== undefined && id !== null)
+                    .map(id => Number(id));
+
+                if (!ids.length) {
+                    toastr.error('Impossible de déterminer les factures à supprimer.');
+                    return;
+                }
+
+                const requests = ids.map(id => {
+                    const endpoint = permanent
+                        ? `/facture/delete/${id}?definitive=1`
+                        : `/facture/delete/${id}`;
+
+                    return fetch(endpoint, {
+                        method: 'DELETE',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    }).then(res => {
+                        if (!res.ok) {
+                            const error = new Error('Erreur réseau');
+                            error.response = res;
+                            throw error;
+                        }
+                        return res.json();
+                    });
+                });
+
+                Promise.allSettled(requests)
+                    .then(results => {
+                        const rejected = results.filter(result => result.status === 'rejected');
+                        const fulfilled = results.filter(result => result.status === 'fulfilled');
+
+                        if (fulfilled.length) {
+                            toastr.success(fulfilled.length > 1
+                                ? 'Factures supprimées avec succès'
+                                : 'Facture supprimée avec succès');
+                        }
+
+                        if (rejected.length) {
+                            rejected.forEach(result => {
+                                const response = result.reason?.response;
+                                if (response) {
+                                    response.json().then(data => {
+                                        toastr.error(data.message || 'Erreur lors de la suppression d\'une facture');
+                                    }).catch(() => {
+                                        toastr.error('Erreur lors de la suppression d\'une facture');
+                                    });
+                                } else {
+                                    toastr.error('Erreur lors de la suppression d\'une facture');
+                                }
+                            });
+                        }
+
+                        if (gridState.gridApi) {
+                            gridState.gridApi.refreshInfiniteCache();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        toastr.error("Erreur lors de la suppression des factures");
+                    });
+            });
+        }
+
+        function restoreInvoices() {
+            const rows = getSelectedRows();
+            if (!rows.length) {
+                toastr.error('Aucune facture sélectionnée');
+                return;
+            }
+
+            Swal.fire({
+                title: 'Êtes-vous sûr ?',
+                text: 'Vous êtes sur le point de restaurer des factures',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Oui, restaurer',
+                cancelButtonText: 'Annuler'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                fetch(`/facture/restore/liste/?r=${encodeURIComponent(JSON.stringify(rows))}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error('Erreur réseau');
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (data.statut !== 'error') {
+                            toastr.success('Factures restaurées avec succès');
+                            if (gridState.gridApi) {
+                                gridState.gridApi.refreshInfiniteCache();
+                            }
+                        } else {
+                            toastr.error(data.message || 'Erreur lors de la restauration');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        toastr.error('Erreur lors de la restauration');
+                    });
+            });
+        }
+
+        function exportSelection() {
+            const rows = getSelectedRows();
+            if (!rows.length) {
+                toastr.error('Aucune facture sélectionnée');
+                return;
+            }
+            window.location.href = `/facture/export/liste/?r=${encodeURIComponent(JSON.stringify(rows))}`;
+        }
+
+        // User Preferences
+        function saveUserPreferences() {
+            const preferences = {};
+            document.querySelectorAll('#columnSelection .inp-cbx').forEach(cb => {
+                preferences[cb.dataset.column] = cb.checked;
+            });
+fetch('/general/table/save-preferences/ventes_Facture/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(preferences)
+})
+.then(res => {
+    if (!res.ok) throw new Error('Erreur réseau');
+    return res.json();
+})
+
+            .then(data => {
+                if (data.statuts === 'ok' || data.status === 'ok') {
+                    toastr.success('Préférences enregistrées avec succès');
+                } else {
+                    toastr.error('Erreur lors de l\'enregistrement');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                toastr.error('Erreur lors de l\'enregistrement des préférences');
+            });
+        }
+
+        function loadUserPreferences() {
+            fetch('/general/table/get-preferences/ventes_Facture/')
+                .then(res => res.json())
+                .then(preferences => {
+                    if (preferences && typeof preferences === 'object') {
+                        Object.keys(preferences).forEach(columnId => {
+                            const checkbox = document.querySelector(`#cbx-${columnId}`);
+                            if (checkbox) {
+                                checkbox.checked = preferences[columnId];
+                                if (gridState.gridApi) {
+                                    gridState.gridApi.setColumnsVisible([columnId], preferences[columnId]);
+                                }
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.warn('Could not load user preferences:', error);
+                });
+        }
+// Email Functions
+function openEmailModal(invoiceId, reference) {
+    document.getElementById('emailReference').value = reference;
+    document.getElementById('emailReference').dataset.invoiceId = invoiceId;
+    document.getElementById('emailObjet').value = `Facture ${reference}`;
+    document.getElementById('emailDestinataire').value = '';
+    document.getElementById('emailMessage').value = `Bonjour,\n\nVeuillez trouver ci-joint la facture ${reference}.\n\nCordialement`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('emailModal'));
+    modal.show();
+}
+
+function sendEmail() {
+    const invoiceId = document.getElementById('emailReference').dataset.invoiceId;
+    const destinataire = document.getElementById('emailDestinataire').value;
+    const objet = document.getElementById('emailObjet').value;
+    const message = document.getElementById('emailMessage').value;
+    const reference = document.getElementById('emailReference').value;
+
+    if (!destinataire || !objet || !message) {
+        toastr.error('Veuillez remplir tous les champs');
+        return;
+    }
+
+    const emailData = {
+        invoiceId: invoiceId,
+        destinataire: destinataire,
+        objet: objet,
+        message: message,
+        reference: reference
+    };
+
+    // Afficher un loader sur le bouton
+    const sendBtn = document.getElementById('sendEmailBtn');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Envoi en cours...';
+
+    fetch('/facture/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            toastr.success('Email envoyé avec succès');
+            bootstrap.Modal.getInstance(document.getElementById('emailModal')).hide();
+            // Reset form
+            document.getElementById('emailForm').reset();
+        } else {
+            toastr.error(data.message || 'Erreur lors de l\'envoi');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        toastr.error('Erreur lors de l\'envoi de l\'email');
+    })
+    .finally(() => {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = originalText;
+    });
+}
+// ✅ Remplacez la fonction openEmailHistoryModal par celle-ci :
+
+function openEmailHistoryModal(invoiceId, reference) {
+    document.getElementById('historyInvoiceRef').textContent = reference;
+    
+    const modal = new bootstrap.Modal(document.getElementById('emailHistoryModal'));
+    modal.show();
+    
+    // Afficher le loader
+    document.getElementById('emailHistoryLoading').classList.remove('d-none');
+    document.getElementById('emailHistoryContent').classList.add('d-none');
+    document.getElementById('emailHistoryEmpty').classList.add('d-none');
+    
+    fetch(`/facture/${invoiceId}/email-history`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('emailHistoryLoading').classList.add('d-none');
+            
+            const tbody = document.getElementById('emailHistoryTableBody');
+            tbody.innerHTML = '';
+
+            if (!data || !data.length) {
+                document.getElementById('emailHistoryEmpty').classList.remove('d-none');
+            } else {
+                document.getElementById('emailHistoryContent').classList.remove('d-none');
+                
+                data.forEach(email => {
+                    const statusBadge = email.statut === 'envoyé' 
+                        ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Envoyé</span>'
+                        : '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Échec</span>';
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <i class="fas fa-user-circle me-2 text-muted"></i>
+                            <strong>${escapeHtml(email.destinataire)}</strong>
+                        </td>
+                        <td class="text-truncate" style="max-width: 250px;" title="${escapeHtml(email.objet)}">
+                            ${escapeHtml(email.objet)}
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                <i class="far fa-clock me-1"></i>
+                                ${new Date(email.date).toLocaleDateString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </small>
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-info me-1 view-email-detail-btn" 
+                                    data-email-id="${email.id}" 
+                                    data-invoice-id="${invoiceId}"
+                                    title="Voir les détails">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <a href="/facture/${invoiceId}/pdf" 
+                               target="_blank" 
+                               class="btn btn-sm btn-outline-danger" 
+                               title="Voir le PDF">
+                                <i class="fas fa-file-pdf"></i>
+                            </a>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('emailHistoryLoading').classList.add('d-none');
+            document.getElementById('emailHistoryEmpty').classList.remove('d-none');
+            toastr.error('Erreur lors du chargement de l\'historique');
+        });
+}
+
+// ✅ Mise à jour de viewEmailDetail pour afficher le bouton PDF
+function viewEmailDetail(emailId) {
+    // Récupérer l'invoiceId depuis le bouton cliqué
+    const button = document.querySelector(`[data-email-id="${emailId}"]`);
+    const invoiceId = button?.dataset.invoiceId;
+
+    fetch(`/facture/email-detail/${emailId}`)
+        .then(res => res.json())
+        .then(email => {
+            document.getElementById('detailDestinataire').innerHTML = 
+                `<i class="fas fa-envelope me-2 text-primary"></i>${escapeHtml(email.destinataire)}`;
+            document.getElementById('detailDate').innerHTML = 
+                `<i class="fas fa-calendar me-2 text-primary"></i>${new Date(email.date).toLocaleString('fr-FR')}`;
+            document.getElementById('detailObjet').textContent = email.objet;
+            document.getElementById('detailMessage').textContent = email.message;
+            
+            const statusBadge = email.statut === 'envoyé' 
+                ? '<span class="badge bg-success fs-6"><i class="fas fa-check me-2"></i>Envoyé avec succès</span>'
+                : '<span class="badge bg-danger fs-6"><i class="fas fa-times me-2"></i>Échec d\'envoi</span>';
+            document.getElementById('detailStatut').innerHTML = statusBadge;
+
+            // ✅ Affichage du bouton PDF
+            const pdfBtnContainer = document.getElementById('detailPdfContainer');
+            if (pdfBtnContainer && invoiceId) {
+                pdfBtnContainer.innerHTML = `
+                    <a href="/facture/${invoiceId}/pdf" 
+                       target="_blank" 
+                       class="btn btn-danger btn-lg">
+                        <i class="fas fa-file-pdf me-2"></i>Voir la facture PDF
+                    </a>
+                `;
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('emailDetailModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('Erreur lors du chargement des détails');
+        });
+}
+
+// ✅ Assurez-vous que les event listeners sont bien configurés
+document.addEventListener('click', e => {
+    if (e.target.closest('.send-email-btn')) {
+        const btn = e.target.closest('.send-email-btn');
+        openEmailModal(btn.dataset.id, btn.dataset.reference);
+    }
+    
+    if (e.target.closest('.email-history-btn')) {
+        const btn = e.target.closest('.email-history-btn');
+        openEmailHistoryModal(btn.dataset.id, btn.dataset.reference);
+    }
+    
+    if (e.target.closest('.view-email-detail-btn')) {
+        const btn = e.target.closest('.view-email-detail-btn');
+        viewEmailDetail(btn.dataset.emailId);
+    }
+});
+
+// ✅ Bouton global "Historique emails" dans l'en-tête
+document.getElementById('email-history-btn')?.addEventListener('click', function() {
+    openGlobalEmailHistory();
+});
+
+function openGlobalEmailHistory() {
+    const modal = new bootstrap.Modal(document.getElementById('emailHistoryModal'));
+    document.getElementById('historyInvoiceRef').textContent = 'Toutes les factures';
+    modal.show();
+    
+    document.getElementById('emailHistoryLoading').classList.remove('d-none');
+    document.getElementById('emailHistoryContent').classList.add('d-none');
+    document.getElementById('emailHistoryEmpty').classList.add('d-none');
+    
+    fetch('/facture/email-history')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('emailHistoryLoading').classList.add('d-none');
+            
+            const tbody = document.getElementById('emailHistoryTableBody');
+            tbody.innerHTML = '';
+
+            if (!data || !data.length) {
+                document.getElementById('emailHistoryEmpty').classList.remove('d-none');
+            } else {
+                document.getElementById('emailHistoryContent').classList.remove('d-none');
+                
+                data.forEach(email => {
+                    const statusBadge = email.statut === 'envoyé' 
+                        ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Envoyé</span>'
+                        : '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Échec</span>';
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <i class="fas fa-file-invoice me-2 text-primary"></i>
+                            <strong>${escapeHtml(email.reference)}</strong>
+                        </td>
+                        <td>
+                            <i class="fas fa-user-circle me-2 text-muted"></i>
+                            ${escapeHtml(email.destinataire)}
+                        </td>
+                        <td class="text-truncate" style="max-width: 200px;" title="${escapeHtml(email.objet)}">
+                            ${escapeHtml(email.objet)}
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                <i class="far fa-clock me-1"></i>
+                                ${new Date(email.date).toLocaleDateString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </small>
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-info me-1 view-email-detail-btn" 
+                                    data-email-id="${email.id}" 
+                                    data-invoice-id="${email.invoiceId || ''}"
+                                    title="Voir les détails">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <a href="/facture/${email.invoiceId || ''}/pdf" 
+                               target="_blank" 
+                               class="btn btn-sm btn-outline-danger" 
+                               title="Voir le PDF">
+                                <i class="fas fa-file-pdf"></i>
+                            </a>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('emailHistoryLoading').classList.add('d-none');
+            document.getElementById('emailHistoryEmpty').classList.remove('d-none');
+            toastr.error('Erreur lors du chargement de l\'historique');
+        });
+}
+
+function openEmailHistoryModal() {
+    fetch('/facture/email-history')
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById('emailHistoryTableBody');
+            tbody.innerHTML = '';
+
+            if (!data || !data.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Aucun email envoyé</td></tr>';
+            } else {
+                data.forEach(email => {
+                    const statusBadge = email.statut === 'envoyé' 
+                        ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Envoyé</span>'
+                        : '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Échec</span>';
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${escapeHtml(email.reference)}</strong></td>
+                            <td><i class="fas fa-envelope me-2 text-muted"></i>${escapeHtml(email.destinataire)}</td>
+                            <td>${escapeHtml(email.objet)}</td>
+                            <td><i class="far fa-clock me-2 text-muted"></i>${new Date(email.date).toLocaleString('fr-FR')}</td>
+                            <td>${statusBadge}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('emailHistoryModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('Erreur lors du chargement de l\'historique');
+        });
+}
+    })();
+    </script>
+    <!-- Modal Envoyer Email -->
+<div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="emailModalLabel">
+                    <i class="fas fa-paper-plane me-2"></i>Envoyer la facture par email
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="emailForm">
+                    <div class="mb-3">
+                        <label for="emailReference" class="form-label fw-bold">
+                            <i class="fas fa-hashtag me-2 text-primary"></i>Référence de la facture
+                        </label>
+                        <input type="text" class="form-control" id="emailReference" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="emailDestinataire" class="form-label fw-bold">
+                            <i class="fas fa-user me-2 text-primary"></i>Destinataire
+                        </label>
+                        <input type="email" class="form-control" id="emailDestinataire" placeholder="exemple@email.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="emailObjet" class="form-label fw-bold">
+                            <i class="fas fa-envelope me-2 text-primary"></i>Objet
+                        </label>
+                        <input type="text" class="form-control" id="emailObjet" placeholder="Facture N°..." required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="emailMessage" class="form-label fw-bold">
+                            <i class="fas fa-comment-dots me-2 text-primary"></i>Message
+                        </label>
+                        <textarea class="form-control" id="emailMessage" rows="5" placeholder="Votre message ici..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-primary" id="sendEmailBtn">
+                    <i class="fas fa-paper-plane me-2"></i>Envoyer par mail
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Historique Emails pour une facture spécifique -->
+<div class="modal fade" id="emailHistoryModal" tabindex="-1" aria-labelledby="emailHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h5 class="modal-title text-white" id="emailHistoryModalLabel">
+                    <i class="fas fa-clock-rotate-left me-2"></i>Historique des emails - <span id="historyInvoiceRef" class="fw-bold"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="emailHistoryLoading" class="text-center py-5 d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Chargement de l'historique...</p>
+                </div>
+                <div id="emailHistoryContent">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 25%;"><i class="fas fa-user me-2 text-primary"></i>Destinataire</th>
+                                    <th style="width: 30%;"><i class="fas fa-envelope me-2 text-primary"></i>Objet</th>
+                                    <th style="width: 20%;"><i class="fas fa-calendar me-2 text-primary"></i>Date d'envoi</th>
+                                    <th style="width: 15%;"><i class="fas fa-check-circle me-2 text-primary"></i>Statut</th>
+                                    <th style="width: 10%;" class="text-center"><i class="fas fa-cog me-2 text-primary"></i>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="emailHistoryTableBody">
+                                <!-- Les lignes seront ajoutées dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="emailHistoryEmpty" class="text-center py-5 d-none">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Aucun email envoyé pour cette facture</p>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal détails d'un email -->
+<div class="modal fade" id="emailDetailModal" tabindex="-1" aria-labelledby="emailDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="emailDetailModalLabel">
+                    <i class="fas fa-envelope-open-text me-2"></i>Détails de l'email
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-muted small">DESTINATAIRE</label>
+                        <p id="detailDestinataire" class="mb-0"><i class="fas fa-envelope me-2 text-primary"></i></p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-muted small">DATE D'ENVOI</label>
+                        <p id="detailDate" class="mb-0"><i class="fas fa-calendar me-2 text-primary"></i></p>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted small">OBJET</label>
+                    <p id="detailObjet" class="mb-0"></p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted small">MESSAGE</label>
+                    <div id="detailMessage" class="border rounded p-3 bg-light" style="white-space: pre-wrap;"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted small">STATUT</label>
+                    <p id="detailStatut" class="mb-0"></p>
+                </div>
+
+                {# 🧩 AJOUTE ICI le conteneur PDF #}
+                <div class="mt-4 text-center" id="detailPdfContainer">
+                    <!-- Le lien PDF sera injecté ici -->
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

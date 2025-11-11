@@ -1,0 +1,433 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Tableau de bord - Facturation{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .dashboard-wrapper {
+            background-color: #f5f7fb;
+            min-height: 100vh;
+            padding: 32px;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .dashboard-title {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .dashboard-title small {
+            display: block;
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        .dashboard-search {
+            position: relative;
+        }
+
+        .dashboard-search input {
+            border-radius: 999px;
+            padding: 0.5rem 1rem 0.5rem 2.5rem;
+            border: 1px solid #d1d5db;
+            background-color: #fff;
+        }
+
+        .dashboard-search .icon {
+            position: absolute;
+            top: 50%;
+            left: 1rem;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+
+        /* CARTES STATISTIQUES */
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 cartes par ligne */
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-cards {
+                grid-template-columns: repeat(2, 1fr); /* 2 cartes par ligne sur tablette */
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-cards {
+                grid-template-columns: 1fr; /* 1 carte par ligne sur mobile */
+            }
+        }
+
+        .stat-card {
+            border-radius: 16px;
+            padding: 20px;
+            color: #fff;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 150px;
+        }
+
+        .stat-card h6 {
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.8rem;
+            margin-bottom: 12px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .stat-card p {
+            margin-bottom: 0;
+        }
+
+        .stat-card.blue { background: linear-gradient(135deg, #4d198eff, #51297aff); }
+        .stat-card.green { background: linear-gradient(135deg, #10b981, #059669); }
+        .stat-card.yellow { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .stat-card.red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+        /* GRIDS DE CONTENU */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 992px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .dashboard-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(148, 163, 184, 0.18);
+        }
+
+        .dashboard-card h5 {
+            font-weight: 600;
+            margin-bottom: 18px;
+            color: #111827;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 260px;
+        }
+
+        .chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+        }
+
+        .recent-invoices-table table {
+            width: 100%;
+            border: none;
+        }
+
+        .recent-invoices-table thead th {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: #9ca3af;
+            border: none;
+            padding-bottom: 12px;
+        }
+
+        .recent-invoices-table tbody td {
+            border-top: 1px solid #f1f5f9;
+            padding: 12px 0;
+            vertical-align: middle;
+            color: #111827;
+        }
+
+        .invoice-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-paid { background: rgba(16, 185, 129, 0.12); color: #047857; }
+        .status-pending { background: rgba(245, 158, 11, 0.12); color: #b45309; }
+        .status-overdue { background: rgba(239, 68, 68, 0.12); color: #b91c1c; }
+
+        .summary-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .summary-list li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            color: #1f2937;
+        }
+
+        .summary-bullet {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #582b97ff;
+        }
+
+        .top-clients-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+            color: #111827;
+        }
+
+        .no-data-hint {
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="dashboard-wrapper">
+    <!-- HEADER -->
+    <div class="dashboard-header">
+        <div>
+            <h1 class="dashboard-title">Tableau de bord - Facturation
+                <small>Suivez l’activité de vos factures en temps réel</small>
+            </h1>
+        </div>
+        <div class="dashboard-search">
+            <span class="icon"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" placeholder="Rechercher...">
+        </div>
+    </div>
+
+    <div class="dashboard-cards">
+    <div class="stat-card blue">
+        <h6>Total factures</h6>
+        <div class="stat-value">{{ totalInvoices }} factures</div>
+    </div>
+    <div class="stat-card green">
+        <h6>Payées</h6>
+        <div class="stat-value">{{ totalPaid|number_format(2, ',', ' ') }} MAD</div>
+    </div>
+    <div class="stat-card yellow">
+        <h6>En attente</h6>
+        <div class="stat-value">{{ pendingAmount|number_format(2, ',', ' ') }} MAD</div>
+        <p class="mb-0 opacity-75">Montant estimé basé sur vos données</p>
+    </div>
+    <div class="stat-card red">
+        <h6>Retard</h6>
+        <div class="stat-value">{{ overdueAmount|number_format(2, ',', ' ') }} MAD</div>
+        <p class="mb-0 opacity-75">Mettre à jour les échéances pour plus de précision</p>
+    </div>
+</div>
+
+    <!-- CONTENU PRINCIPAL -->
+    <div class="content-grid">
+        <div class="dashboard-card">
+            <h5>Évolution du chiffre d’affaires</h5>
+            <div class="chart-container">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+        <div class="dashboard-card">
+            <h5>Top clients</h5>
+            <ul class="summary-list top-clients-list">
+                {% if topClients is defined and topClients|length > 0 %}
+                    {% for client in topClients %}
+                        <li>
+                            <span>{{ client.name }}</span>
+                            <strong>{{ client.amount|number_format(0, ',', ' ') }} MAD</strong>
+                        </li>
+                    {% endfor %}
+                {% else %}
+                    <li>Aucun client à afficher pour le moment</li>
+                {% endif %}
+            </ul>
+            <p class="no-data-hint">Connectez vos données clients pour visualiser ce graphique.</p>
+        </div>
+    </div>
+
+    <!-- SECTION FACTURES ET RÉSUMÉ -->
+    <div class="section-grid">
+        <div class="dashboard-card recent-invoices-table">
+            <h5>Liste des factures récentes</h5>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Client</th>
+                        <th>Date</th>
+                        <th>Montant</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <!-- Replace the recent invoices tbody in dashboard.html.twig -->
+<tbody>
+    {% if recentInvoices is not empty %}
+        {% for facture in recentInvoices %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ facture.tier ? facture.tier.nom : 'N/A' }}</td>
+                <td>{{ facture.dateCreation ? facture.dateCreation|date('d/m/Y') : '—' }}</td>
+                <td>
+                    {% set ttc = 0 %}
+                    {% for ligne in facture.lignes %}
+                        {% set htLigne = ligne.quantite * ligne.prixHt %}
+                        {% set htApresRemise = htLigne * (1 - (ligne.remise|default(0) / 100)) %}
+                        {% set tvaLigne = htApresRemise * ((ligne.tva|default(0)) / 100) %}
+                        {% set ttc = ttc + htApresRemise + tvaLigne %}
+                    {% endfor %}
+                    {{ ttc|number_format(2, ',', ' ') }} {{ facture.devise ?: 'MAD' }}
+                </td>
+                <td>
+                    {% set etat = facture.etat|default('Inconnu') %}
+                    {% set statusClass = {
+                        'Payée': 'status-paid',
+                        'Validée': 'status-pending',
+                        'Envoyée': 'status-pending',
+                        'Brouillon': 'status-pending',
+                        'Retard': 'status-overdue'
+                    }[etat] ?? 'status-pending' %}
+                    <span class="invoice-status {{ statusClass }}">
+                        <i class="bi {{ etat == 'Payée' ? 'bi-check-circle' : (etat == 'Retard' ? 'bi-exclamation-triangle' : 'bi-hourglass-split') }}"></i>
+                        {{ etat }}
+                    </span>
+                </td>
+                <td>
+                    <div class="btn-group" role="group">
+                        <a href="{{ path('app_facture_show', {'id': facture.id}) }}" class="text-primary" title="Voir"><i class="bi bi-eye"></i></a>
+                        <a href="{{ path('app_facture_edit', {'id': facture.id}) }}" class="text-secondary mx-2" title="Éditer"><i class="bi bi-pencil"></i></a>
+                        <a href="#" class="text-danger" title="Supprimer" onclick="return confirm('Supprimer cette facture ?')"><i class="bi bi-trash"></i></a>
+                    </div>
+                </td>
+            </tr>
+        {% endfor %}
+    {% else %}
+        <tr>
+            <td colspan="6" class="text-center text-muted">Aucune facture récente</td>
+        </tr>
+    {% endif %}
+</tbody>
+            </table>
+        </div>
+
+        <div class="dashboard-card">
+            <h5>Résumé</h5>
+            <ul class="summary-list">
+                <li><span class="summary-bullet"></span>Prochaines factures à échéance</li>
+                <li><span class="summary-bullet"></span>Factures impayées depuis plus de 30 jours</li>
+                <li><span class="summary-bullet"></span>Notes & rappels internes</li>
+            </ul>
+            <p class="no-data-hint">Connectez vos données et automatisations pour alimenter ce bloc.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const chartElement = document.getElementById('revenueChart');
+            if (!chartElement) return;
+
+            const revenueChart = new Chart(chartElement, {
+                type: 'line',
+                data: {
+                    labels: {{ monthlyRevenueData.labels|json_encode|raw }},
+                    datasets: [
+                        {
+                            label: 'Facturé',
+                            data: {{ monthlyRevenueData.invoiced|json_encode|raw }},
+                            borderColor: '#4f165cff',
+                            backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                            borderWidth: 3,
+                            tension: 0.35,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#4e1d76ff'
+                        },
+                        {
+                            label: 'Payé',
+                            data: {{ monthlyRevenueData.paid|json_encode|raw }},
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                            borderWidth: 3,
+                            tension: 0.35,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#16a34a'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: true, position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleColor: '#fff',
+                            bodyColor: '#e2e8f0',
+                            callbacks: {
+                                label: function (context) {
+                                    const value = context.parsed.y || 0;
+                                    return `${context.dataset.label}: ${value.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} MAD`;
+                                }
+                            }
+                        }
+                    },
+                    layout: { padding: { top: 10, right: 16, bottom: 10, left: 0 } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#475569', maxRotation: 0, autoSkipPadding: 16 } },
+                        y: {
+                            grid: { drawBorder: false, color: 'rgba(148, 163, 184, 0.2)' },
+                            ticks: {
+                                color: '#475569',
+                                callback: function (value) {
+                                    return `${value.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} MAD`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+{% endblock %}

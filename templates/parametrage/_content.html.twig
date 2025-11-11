@@ -1,0 +1,396 @@
+{# templates/parametrage/_content.html.twig #}
+<div class="parametrage-layout container-fluid py-4">
+    <!-- 🧭 En-tête principale -->
+    <div class="mb-4">
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb small text-muted mb-0">
+                <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}">Tableau de bord</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Paramétrage</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-1">Paramétrage</h1>
+        <p class="text-muted mb-3">
+            Activez ou ajustez les options de vos modules métier puis enregistrez vos changements.
+        </p>
+    </div>
+
+    <!-- 🧩 Onglets à gauche + Boutons à droite -->
+    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-4 flex-wrap gap-3">
+        <!-- 🔹 Onglets à gauche -->
+        <div class="d-flex align-items-center flex-wrap gap-3">
+            <ul class="nav nav-tabs border-0 flex-wrap align-items-center m-0">
+                <li class="nav-item">
+                    <a class="nav-link active d-flex align-items-center gap-1"
+                       id="tab-general" data-bs-toggle="tab" href="#content-general" role="tab">
+                        ⚙️ <span>Général</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center gap-1"
+                       id="tab-options" data-bs-toggle="tab" href="#content-options" role="tab">
+                        🛈 <span>Options</span>
+                    </a>
+                </li>
+                <li class="nav-item d-flex align-items-center">
+                    <a class="nav-link d-flex align-items-center gap-1"
+                       id="tab-modeles" data-bs-toggle="tab" href="#content-modeles" role="tab">
+                        ≡ <span>Modèles</span>
+                    </a>
+                    <a href="#" class="text-muted fw-semibold ms-3 small text-decoration-none d-flex align-items-center">
+                        <i class="bi bi-arrow-repeat me-1"></i>Export/Import
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 🔹 Boutons à droite -->
+        <div class="d-flex gap-2 align-items-center">
+            <a href="{{ path('app_dashboard') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left-short me-1"></i>Retour
+            </a>
+            <button type="submit" form="{{ form_id|default('parametrage-form') }}" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>Enregistrer
+            </button>
+        </div>
+    </div>
+
+    <!-- 💡 Contenu principal -->
+    <div class="tab-content">
+        <!-- 🧱 Onglet Général -->
+        <div class="tab-pane fade show active" id="content-general" role="tabpanel">
+            {% if modules is empty %}
+                <div class="alert alert-warning parametrage-empty-state">
+                    Aucun paramètre disponible pour le moment. Ajoutez des données dans la table
+                    <strong>params_ventes</strong> afin d'activer cette page.
+                </div>
+            {% else %}
+                {% if form_action is defined %}
+                    <form method="post" id="{{ form_id|default('parametrage-form') }}" action="{{ form_action }}">
+                {% else %}
+                    <form method="post" id="{{ form_id|default('parametrage-form') }}">
+                {% endif %}
+                  <input type="hidden" name="_token" value="{{ csrf_token('submit') }}">
+
+
+                    <!-- 🔹 Liste des modules -->
+                    <ul class="nav nav-tabs parametrage-module-tabs" role="tablist">
+                        {% for module in modules %}
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {{ loop.first ? 'active' : '' }}"
+                                        id="module-tab-{{ module.slug }}"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#module-pane-{{ module.slug }}"
+                                        type="button" role="tab">
+                                    {{ module.label }}
+                                </button>
+                            </li>
+                        {% endfor %}
+                    </ul>
+
+                    <!-- 🔸 Contenu de chaque module -->
+                    <div class="tab-content parametrage-module-content pt-4">
+                        {% for module in modules %}
+                            <div class="tab-pane fade {{ loop.first ? 'show active' : '' }}"
+                                 id="module-pane-{{ module.slug }}" role="tabpanel">
+                                {% if module.categories is empty %}
+                                    <div class="alert alert-light border text-muted">
+                                        Aucune catégorie de paramètre pour ce module.
+                                    </div>
+                                {% else %}
+                                    <div class="row g-4">
+                                        {% for category in module.categories %}
+                                            <div class="col-12 col-lg-6">
+                                                <div class="card parametrage-category-card h-100 shadow-sm border-0">
+                                                    <div class="card-header">
+                                                        <h2 class="h6 mb-0">{{ category.label }}</h2>
+                                                    </div>
+                                                    <div class="list-group list-group-flush">
+                                                        {% for param in category.params %}
+                                                            {% set type = param.type ? param.type|lower : '' %}
+                                                            {% set isBoolean = type in ['switch','bool','boolean','checkbox'] %}
+                                                            {% set isNumber = type == 'number' %}
+                                                            {% set isTextarea = type in ['textarea','text_long'] %}
+                                                            {% set rawState = isBoolean ? (param.etat ?? '') : (param.valeur ?? '') %}
+                                                            {% set isEnabled = rawState|default('')|lower in ['1','true','on','enabled','oui','yes'] %}
+
+                                                            <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
+                                                                <div>
+                                                                    <div class="fw-semibold" title="{{ param.cle ?? param.cleLabels ?? param.cle_labels ?? '' }}">
+                                                                        {{ param.titre ?? param.cleLabels ?? param.cle_labels ?? param.cle ?? 'Sans titre' }}
+                                                                    </div>
+                                                                    <small class="text-muted">{{ param.cle ?? '' }}</small>
+                                                                </div>
+
+                                                                <div class="parametrage-value text-end d-flex align-items-center gap-2">
+                                                                    {% if isBoolean %}
+                                                                        <div class="btn-group parametrage-switch" role="group">
+                                                                            <input class="btn-check" type="radio"
+                                                                                   name="params[{{ param.id }}]"
+                                                                                   id="param-{{ param.id }}-yes"
+                                                                                   value="on"
+                                                                                   {{ isEnabled ? 'checked' }}>
+                                                                            <label class="btn btn-sm btn-outline-primary" for="param-{{ param.id }}-yes">Oui</label>
+                                                                            <input class="btn-check" type="radio"
+                                                                                   name="params[{{ param.id }}]"
+                                                                                   id="param-{{ param.id }}-no"
+                                                                                   value="off"
+                                                                                   {{ not isEnabled ? 'checked' }}>
+                                                                            <label class="btn btn-sm btn-outline-secondary" for="param-{{ param.id }}-no">Non</label>
+                                                                        </div>
+                                                                    {% elseif isNumber %}
+                                                                        <input type="number" class="form-control form-control-sm"
+                                                                               name="params[{{ param.id }}]"
+                                                                               value="{{ param.valeur }}" step="1">
+                                                                    {% elseif isTextarea %}
+                                                                        <textarea class="form-control form-control-sm" rows="2"
+                                                                                  name="params[{{ param.id }}]">{{ param.valeur }}</textarea>
+                                                                    {% else %}
+                                                                        <input type="text" class="form-control form-control-sm"
+                                                                               name="params[{{ param.id }}]"
+                                                                               value="{{ param.valeur }}">
+                                                                    {% endif %}
+
+                                                                    <button type="button" class="btn btn-sm btn-outline-info"
+                                                                            onclick="toggleEditTitre({{ param.id }})">
+                                                                        <i class="bi bi-pencil-square"></i>
+                                                                    </button>
+
+                                                                    <input type="text"
+                                                                           class="form-control form-control-sm d-none"
+                                                                           id="titre-input-{{ param.id }}"
+                                                                           name="paramsTitre[{{ param.id }}]"
+                                                                           value="{{ param.titre ?? param.cleLabels ?? param.cle_labels ?? param.cle ?? '' }}"
+                                                                           style="width: 150px;">
+                                                                </div>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+
+        <!-- 🧩 Autres onglets -->
+        <div class="tab-pane fade" id="content-options" role="tabpanel">
+            <div class="alert alert-info">Section “Options” — à venir.</div>
+        </div>
+        <div class="tab-pane fade" id="content-modeles" role="tabpanel">
+            <div class="alert alert-info">Section “Modèles” — à venir.</div>
+        </div>
+    </div>
+</div>
+
+<!-- 🎨 Script -->
+<script>
+const csrfTokenToggle = '{{ csrf_token('submit') }}';
+
+
+
+function toggleEditTitre(id) {
+    const input = document.getElementById('titre-input-' + id);
+    input.classList.toggle('d-none');
+    if (!input.classList.contains('d-none')) input.focus();
+}
+</script>
+
+<!-- 🎨 Styles -->
+<style>
+.parametrage-layout { background: #f8f9fb; min-height: 100vh; }
+.breadcrumb a { color: #6c757d; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.nav-tabs .nav-link {
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #6c757d;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.nav-tabs .nav-link.active {
+    color: #41237fff;
+    border-bottom: 2px solid #511a7cff;
+}
+.nav-tabs .nav-link span {
+    font-size: 0.95rem;
+}
+.nav-tabs .nav-link {
+    display: flex;
+    align-items: center;
+}
+
+.text-muted.fw-semibold {
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+.text-muted.fw-semibold:hover {
+    color: #7830a5ff;
+    text-decoration: underline;
+}
+
+.btn-outline-secondary i, .btn-primary i {
+    font-size: 1rem;
+    vertical-align: middle;
+}
+</style>
+
+
+{# Add this script at the bottom of parametrage/_content.html.twig #}
+
+<script>
+// ✅ Toggle instantané pour les switches Oui/Non
+document.addEventListener('DOMContentLoaded', function() {
+    initToggleSwitches();
+});
+
+// ✅ Fonction réutilisable pour initialiser les switches (marche aussi dans les modales)
+function initToggleSwitches() {
+    const switches = document.querySelectorAll('.parametrage-switch input[type="radio"]');
+    
+    switches.forEach(radio => {
+        // ✅ Retirer les anciens listeners pour éviter les doublons
+        radio.removeEventListener('change', handleToggleChange);
+        // ✅ Ajouter le listener
+        radio.addEventListener('change', handleToggleChange);
+    });
+}
+
+function handleToggleChange(event) {
+    const radio = event.target;
+    const paramId = radio.name.match(/params\[(\d+)\]/)?.[1];
+    
+    if (!paramId) {
+        console.warn('❌ ID du paramètre introuvable');
+        return;
+    }
+    
+    const newValue = radio.value; // 'on' ou 'off'
+    
+    // ✅ Afficher un indicateur de chargement
+    const switchGroup = radio.closest('.parametrage-switch');
+    const originalHTML = switchGroup.innerHTML;
+    switchGroup.style.opacity = '0.6';
+    switchGroup.style.pointerEvents = 'none';
+    
+    // ✅ Envoyer la requête AJAX
+       fetch(`/parametrage/toggle/${paramId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': csrfTokenToggle
+        },
+        body: JSON.stringify({ value: newValue })
+    })
+
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('✅ Paramètre mis à jour:', data);
+            
+            // ✅ Animation de succès
+            switchGroup.style.opacity = '1';
+            switchGroup.style.pointerEvents = 'auto';
+            
+            // ✅ Flash visuel
+            switchGroup.style.transition = 'background-color 0.3s';
+            switchGroup.style.backgroundColor = '#d4edda';
+            setTimeout(() => {
+                switchGroup.style.backgroundColor = '';
+            }, 600);
+            
+        } else {
+            console.error('❌ Erreur:', data.message);
+            alert('Erreur lors de la mise à jour: ' + (data.message || 'Erreur inconnue'));
+            
+            // ✅ Restaurer l'état précédent
+            switchGroup.innerHTML = originalHTML;
+            switchGroup.style.opacity = '1';
+            switchGroup.style.pointerEvents = 'auto';
+            initToggleSwitches(); // Ré-initialiser les listeners
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erreur réseau:', error);
+        alert('Erreur de connexion au serveur');
+        
+        // ✅ Restaurer l'état précédent
+        switchGroup.innerHTML = originalHTML;
+        switchGroup.style.opacity = '1';
+        switchGroup.style.pointerEvents = 'auto';
+        initToggleSwitches();
+    });
+}
+
+// ✅ Réinitialiser les switches quand une modale s'ouvre
+document.addEventListener('shown.bs.modal', function(event) {
+    console.log('🔄 Modale ouverte, réinitialisation des switches...');
+    setTimeout(() => {
+        initToggleSwitches();
+    }, 100);
+});
+
+// ✅ Pour les modales chargées dynamiquement via AJAX
+const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        if (mutation.addedNodes.length > 0) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1 && node.classList && node.classList.contains('modal')) {
+                    console.log('🔄 Nouvelle modale détectée, initialisation...');
+                    setTimeout(() => {
+                        initToggleSwitches();
+                    }, 100);
+                }
+            });
+        }
+    });
+});
+
+observer.observe(document.body, {
+    childList: true,
+    subtree: true
+});
+
+// ✅ Fonction pour le bouton d'édition de titre
+function toggleEditTitre(id) {
+    const input = document.getElementById('titre-input-' + id);
+    if (input) {
+        input.classList.toggle('d-none');
+        if (!input.classList.contains('d-none')) {
+            input.focus();
+        }
+    }
+}
+</script>
+
+<style>
+.parametrage-switch {
+    transition: all 0.2s ease;
+}
+
+.parametrage-switch input[type="radio"]:checked + label {
+    font-weight: 600;
+}
+
+.parametrage-switch .btn-outline-primary:hover,
+.parametrage-switch .btn-outline-secondary:hover {
+    transform: scale(1.05);
+}
+
+/* Animation pour le feedback visuel */
+@keyframes successPulse {
+    0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(40, 167, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+}
+
+.parametrage-switch.success-pulse {
+    animation: successPulse 0.6s ease-out;
+}
+</style>

@@ -1,0 +1,931 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Nouvelle facture{% endblock %}
+
+{% block activeFacture %}class="active"{% endblock %}
+{% block activeVentes2 %}show-m{% endblock %}
+
+{% block body %}
+
+<style>
+    .error {
+        color: #dc3545;
+        font-size: 0.9rem;
+        margin-top: 3px;
+        display: block;
+    }
+
+    label { font-weight: bold; display: block; margin-bottom: 5px; }
+    input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; }
+    
+    .sortable-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .sortable-block {
+        background: #ffffff;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 1.25rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transition: box-shadow 0.2s ease;
+    }
+
+    .sortable-block.product-block {
+        border-left: 4px solid #1c3d61ff;
+    }
+
+    .sortable-block.section-block {
+        border-left: 4px solid #28a745;
+    }
+
+    .sortable-block:hover {
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    .product-grid {
+        display: grid;
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .product-grid .product-field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: #6c757d;
+        margin-bottom: 0.4rem;
+        font-weight: 600;
+    }
+
+    .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-info {
+        background-color: #2b4b6dff;
+        color: white;
+        border: none;
+    }
+
+    .btn-info:hover {
+        background-color: #1c3d61ff;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+        border: none;
+    }
+
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+        color: white;
+        border: none;
+    }
+
+    .btn-success:hover {
+        background-color: #218838;
+    }
+
+    .btn-outline-primary {
+        background-color: transparent;
+        border: 1px solid #132c46ff;
+        color: #29405aff;
+    }
+
+    .btn-outline-primary:hover {
+        background-color: #132c46ff;
+        color: white;
+    }
+
+    .btn-outline-success {
+        background-color: transparent;
+        border: 1px solid #28a745;
+        color: #28a745;
+    }
+
+    .btn-outline-success:hover {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .ligne { background-color: #f9f9f9; }
+    .notification-err { font-size: 0.85rem; }
+    .btn-envoyer { display: block; width: 100%; margin-top: 20px; font-size: 1.1rem; }
+    .alert { padding: 10px 15px; border-radius: 6px; margin-bottom: 15px; }
+    .alert-success { background-color: #d1e7dd; color: #0f5132; }
+    .alert-error { background-color: #f8d7da; color: #842029; }
+
+    /* Modal styles */
+    .modal-header {
+        background: linear-gradient(135deg, #1c3d61ff 0%, #2b4b6dff 100%);
+        color: white;
+        border-bottom: none;
+    }
+
+    .modal-header .btn-close {
+        filter: brightness(0) invert(1);
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .invoice-summary {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-item {
+        background: #f8f9fa;
+        padding: 1.25rem;
+        border-radius: 8px;
+        border-left: 4px solid #2b4b6dff;
+    }
+
+    .summary-item label {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .summary-item .value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #1c3d61ff;
+    }
+
+    .totals-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin: 1.5rem 0;
+    }
+
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        font-size: 1rem;
+        gap: 1rem;
+    }
+
+    .total-row label {
+        margin-bottom: 0;
+        color: #495057;
+        min-width: 160px;
+    }
+
+    .total-row .value, .total-row input {
+        font-weight: 600;
+        color: #1c3d61ff;
+        text-align: right;
+        min-width: 140px;
+    }
+
+    .total-row.grand-total {
+        border-top: 2px solid #2b4b6dff;
+        padding-top: 1rem;
+        margin-top: 1rem;
+        font-size: 1.1rem;
+    }
+
+    .total-row.grand-total label,
+    .total-row.grand-total .value {
+        color: #2b4b6dff;
+        font-weight: bold;
+    }
+
+    .modal-footer {
+        background: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 1.25rem;
+    }
+
+    .modal-footer .btn {
+        margin: 0 5px;
+        padding: 10px 20px;
+    }
+
+    .btn-primary-modal {
+        background-color: #2b4b6dff;
+        color: white;
+        border: none;
+    }
+
+    .btn-primary-modal:hover {
+        background-color: #1c3d61ff;
+    }
+
+    .btn-warning-modal {
+        background-color: #ffc107;
+        color: #000;
+        border: none;
+    }
+
+    .btn-warning-modal:hover {
+        background-color: #ffb300;
+    }
+
+    .info-box {
+        background: #e7f3ff;
+        border-left: 4px solid #2b4b6dff;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+    }
+
+    .info-box strong {
+        color: #2b4b6dff;
+    }
+
+    .section-block textarea {
+        background: #f8f9fa;
+        border-left: 3px solid #28a745;
+        font-style: italic;
+    }
+</style>
+
+<div class="page-content">
+    <div class="container-fluid">
+
+    <form id="form_facture" method="POST" action="{{ path('app_facture_create') }}">
+        <!-- Barre d'action -->
+        <div class="row justify-content-md-center mb-2 d-flex align-items-center">
+            <div class="col-md-6">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="#"><i class="fa-solid fa-house"></i></a></li>
+                        <li class="breadcrumb-item"><a href="#">Ventes</a></li>
+                        <li class="breadcrumb-item"><a href="/factures">Liste des factures</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Nouvelle facture</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="col-md-6 text-end">
+                <button type="button" id="btn-save-draft" class="btn btn-info">
+                    <i class="fa-regular fa-floppy-disk"></i> Enregistrer
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="window.history.back();">
+                    <i class="far fa-window-close"></i> Annuler
+                </button>
+            </div>
+        </div>
+
+        <!-- Formulaire principal -->
+        <div class="row justify-content-md-center mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h3>Créer une nouvelle facture</h3>
+
+                        <div class="row">
+                            <!-- Colonne gauche -->
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label>Référence Facture <span style="color:red">*</span> :</label>
+                                    <input type="text" name="reference" placeholder="FAC-2025-001" required>
+                                    <div class="error"></div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label>Client <span style="color:red">*</span> :</label>
+                                    <select name="tier" required>
+                                        <option value="">-- Sélectionner --</option>
+                                        {% for t in tiers %}
+                                            <option value="{{ t.id }}">{{ t.nom }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="error"></div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label>Date de facture <span style="color:red">*</span> :</label>
+                                    <input type="date" name="date_creation" value="{{ 'now'|date('Y-m-d') }}" required>
+                                    <div class="error"></div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label>Date d'échéance :</label>
+                                    <input type="date" name="date_echeance">
+                                    <div class="error"></div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label>État :</label>
+                                    <select name="etat">
+                                        <option value="Brouillon">Brouillon</option>
+                                        <option value="Validée">Validée</option>
+                                        <option value="Envoyée">Envoyée</option>
+                                        <option value="Payée">Payée</option>
+                                        <option value="Annulée">Annulée</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Colonne droite -->
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label>Objet <span style="color:red">*</span> :</label>
+                                    <input type="text" name="objet" placeholder="Objet de la facture" required>
+                                    <div class="error"></div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label>Devise :</label>
+                                    <select name="devise">
+                                        {% for d in devises %}
+                                            <option value="{{ d }}">{{ d }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label>Mode de paiement :</label>
+                                    <select name="modepaiement">
+                                        {% for m in modePaiement %}
+                                            <option value="{{ m }}">{{ m }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Produits de la facture -->
+                        <div class="product-section mt-4">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <h3 class="mb-0 fw-bold text-primary pb-2">Produits de la facture</h3>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-primary" id="addLigne">
+                                        <i class="fa-solid fa-plus me-1"></i> Ajouter un produit
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success" id="addSectionBtn">
+                                        <i class="fa-solid fa-plus me-1"></i> Ajouter une section
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="blocksContainer" class="sortable-container"></div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="row mt-4">
+                            <!-- Note + retenues à gauche -->
+                            <div class="col-md-6">
+                                <label>Note :</label>
+                                <textarea name="notes" rows="6" class="form-control mb-3" placeholder="Ajouter une note..."></textarea>
+
+                                <div class="totals-section" style="padding: 0.75rem; background: #f8f9fa; border-radius: 8px;">
+                                    {% if factureParams.retenue_source_actif|default(false) %}
+                                    <div class="total-row" style="margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.9rem;">Retenue à la source (%) :</label>
+                                        <input type="number" name="retenue_source_globale" step="0.01" min="0" value="0"
+                                               style="width:100px; text-align:center; padding:4px; font-size:0.85rem;">
+                                    </div>
+                                    {% endif %}
+
+                                    {% if factureParams.retenue_garantie_actif|default(false) %}
+                                    <div class="total-row" style="margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.9rem;">Retenue de garantie (%) :</label>
+                                        <input type="number" name="retenue_garantie_globale" step="0.01" min="0" value="0"
+                                               style="width:100px; text-align:center; padding:4px; font-size:0.85rem;">
+                                    </div>
+                                    {% endif %}
+
+                                    {% if factureParams.remise|default(false) %}
+                                    <div class="total-row">
+                                        <label style="font-size: 0.9rem;">Remise globale (%) :</label>
+                                        <input type="number" name="remise_globale" step="0.01" min="0" value="0"
+                                               style="width:100px; text-align:center; padding:4px; font-size:0.85rem;">
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Totaux à droite -->
+                            <div class="col-md-6">
+                                <div class="totals-section">
+                                    <div class="total-row">
+                                        <label>Total HT :</label>
+                                        <input type="text" name="total_ht" readonly value="0.00">
+                                    </div>
+
+                                    {% if factureParams.remise|default(false) %}
+                                    <div class="total-row">
+                                        <label id="label-remise-globale">Remise globale :</label>
+                                        <input type="text" name="total_remise" readonly value="0.00">
+                                    </div>
+                                    {% endif %}
+
+                                    {% if factureParams.montant_tva|default(false) %}
+                                    <div class="total-row">
+                                        <label>Total TVA :</label>
+                                        <input type="text" name="total_tva" readonly value="0.00">
+                                    </div>
+                                    {% endif %}
+
+                                    {% if factureParams.retenue_source_actif|default(false) %}
+                                    <div class="total-row">
+                                        <label id="label-retenue-source">Retenue à la source :</label>
+                                        <input type="text" name="total_retenue_source" readonly value="0.00">
+                                    </div>
+                                    {% endif %}
+
+                                    {% if factureParams.retenue_garantie_actif|default(false) %}
+                                    <div class="total-row">
+                                        <label id="label-retenue-garantie">Retenue de garantie :</label>
+                                        <input type="text" name="total_retenue_garantie" readonly value="0.00">
+                                    </div>
+                                    {% endif %}
+
+                                    <div class="total-row grand-total">
+                                        <label>Total TTC :</label>
+                                        <input type="text" name="total_ttc" readonly value="0.00">
+                                    </div>
+                                </div>
+
+                                <div class="text-center mt-3">
+                                    <button type="button" id="btn-open-modal" class="btn btn-success btn-envoyer">
+                                        <i class="fa-solid fa-paper-plane"></i> Finaliser la facture
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal -->
+                        <div class="modal fade" id="factureResumeModal" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">
+                                            <i class="fas fa-file-invoice"></i> Résumé de la Facture
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+
+                                    <div class="modal-body">
+                                        <div class="info-box">
+                                            <i class="fas fa-info-circle"></i>
+                                            <strong>Vérifiez les informations</strong> avant de finaliser la facture.
+                                        </div>
+
+                                        <div class="invoice-summary">
+                                            <div class="summary-item">
+                                                <label>Référence</label>
+                                                <div class="value" id="modal-reference">-</div>
+                                            </div>
+                                            <div class="summary-item">
+                                                <label>Client</label>
+                                                <div class="value" id="modal-tier">-</div>
+                                            </div>
+                                            <div class="summary-item">
+                                                <label>Date de Facture</label>
+                                                <div class="value" id="modal-date-creation">-</div>
+                                            </div>
+                                            <div class="summary-item">
+                                                <label>Objet</label>
+                                                <div class="value" id="modal-objet">-</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="totals-section">
+                                            <div class="total-row">
+                                                <label><i class="fas fa-calculator"></i> Total HT</label>
+                                                <div class="value" id="modal-total-ht">0.00 MAD</div>
+                                            </div>
+                                            <div class="total-row">
+                                                <label><i class="fas fa-percentage"></i> Remise</label>
+                                                <div class="value" id="modal-total-remise">0.00 MAD</div>
+                                            </div>
+                                            <div class="total-row">
+                                                <label><i class="fas fa-receipt"></i> TVA</label>
+                                                <div class="value" id="modal-total-tva">0.00 MAD</div>
+                                            </div>
+                                            <div class="total-row grand-total">
+                                                <label><i class="fas fa-euro-sign"></i> Total TTC</label>
+                                                <div class="value" id="modal-total-ttc">0.00 MAD</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            <i class="fas fa-times"></i> Fermer
+                                        </button>
+                                        <button type="button" id="modal-btn-email" class="btn btn-primary-modal">
+                                            <i class="fas fa-envelope"></i> Envoyer par mail
+                                        </button>
+                                        <button type="button" id="modal-btn-print" class="btn btn-info" style="background-color: #17a2b8; color: white;">
+                                            <i class="fas fa-print"></i> Imprimer
+                                        </button>
+                                        <a href="#" id="modal-btn-pdf" class="btn btn-warning-modal" target="_blank">
+                                            <i class="fas fa-file-pdf"></i> Télécharger PDF
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+<script>
+// ✅ Store params from controller
+const factureParams = {{ factureParams|json_encode|raw }};
+
+let factureId = null;
+let myModal;
+let sectionCount = 0;
+
+// ✅ Create product block with conditional columns
+function createProductBlock(index) {
+    const block = document.createElement('div');
+    block.classList.add('sortable-block', 'product-block');
+
+    let gridCols = [];
+    if (factureParams.ref) gridCols.push('1fr');
+    if (factureParams.produit) gridCols.push('1.5fr');
+    if (factureParams.quantite) gridCols.push('0.7fr');
+    if (factureParams.unite) gridCols.push('0.7fr');
+    if (factureParams.prix_ht) gridCols.push('0.9fr');
+    if (factureParams.remise_ligne) gridCols.push('0.8fr');
+    if (factureParams.tva) gridCols.push('0.8fr');
+    if (factureParams.montant_tva) gridCols.push('1fr');
+    gridCols.push('1fr');
+    gridCols.push('0.4fr');
+
+    let html = '<div class="product-grid" style="grid-template-columns: ' + gridCols.join(' ') + ';">';
+
+    if (factureParams.ref) {
+        html += '<div class="product-field"><label class="form-label">Référence</label><input type="text" name="produits[' + index + '][reference]" class="form-control"></div>';
+    }
+
+    if (factureParams.produit) {
+        html += '<div class="product-field"><label class="form-label">Produit</label><input type="text" name="produits[' + index + '][produit]" class="form-control" required></div>';
+    }
+
+    if (factureParams.quantite) {
+        html += '<div class="product-field"><label class="form-label">Quantité</label><input type="number" name="produits[' + index + '][quantite]" class="form-control" value="1" step="0.01"></div>';
+    }
+
+    if (factureParams.unite) {
+        html += '<div class="product-field"><label class="form-label">Unité</label><input type="text" name="produits[' + index + '][unite]" class="form-control" value="kg"></div>';
+    }
+
+    if (factureParams.prix_ht) {
+        html += '<div class="product-field"><label class="form-label">Prix HT</label><input type="number" name="produits[' + index + '][prix_ht]" class="form-control" value="0" step="0.01"></div>';
+    }
+
+    if (factureParams.remise_ligne) {
+        html += '<div class="product-field"><label class="form-label">Remise (%)</label><select name="produits[' + index + '][remise]" class="form-control"><option value="0">0%</option><option value="5">5%</option><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option></select></div>';
+    }
+
+    if (factureParams.tva) {
+        html += '<div class="product-field"><label class="form-label">TVA (%)</label><select name="produits[' + index + '][tva]" class="form-control"><option value="0">0%</option><option value="5">5%</option><option value="10">10%</option><option value="20" selected>20%</option></select></div>';
+    }
+
+    if (factureParams.montant_tva) {
+        html += '<div class="product-field"><label class="form-label">Montant TVA</label><input type="number" name="produits[' + index + '][montant_tva]" class="form-control" value="0" readonly></div>';
+    }
+
+    html += '<div class="product-field"><label class="form-label">Total TTC</label><input type="number" name="produits[' + index + '][total_ttc]" class="form-control" value="0" readonly></div>';
+    html += '<div class="product-field" style="display:flex; align-items:flex-end;"><button type="button" class="deleteLigne btn btn-danger btn-sm" style="width:100%;"><i class="fa-solid fa-trash-can"></i></button></div>';
+
+    if (factureParams.description) {
+        html += '<div style="grid-column: 1 / -1; margin-top: 0.5rem;"><label class="form-label">Description</label><textarea name="produits[' + index + '][description]" class="form-control" rows="2" placeholder="Description du produit..." style="resize: vertical;"></textarea></div>';
+    }
+
+    html += '</div>';
+    block.innerHTML = html;
+    return block;
+}
+
+function createSectionBlock(index) {
+    const block = document.createElement('div');
+    block.classList.add('sortable-block', 'section-block');
+    block.innerHTML = '<div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;"><i class="fa-solid fa-grip-vertical" style="cursor: grab; color: #28a745; font-size: 1.2rem;"></i><h5 style="margin: 0; color: #28a745; flex: 1;"><i class="fa-solid fa-align-left"></i> Section ' + index + '</h5><button type="button" class="deleteSection btn btn-danger btn-sm"><i class="fa-solid fa-trash-can"></i></button></div><textarea name="sections[' + index + '][contenu]" class="form-control" rows="3" placeholder="Contenu de la section..." style="resize: vertical;"></textarea>';
+    return block;
+}
+
+function calculateTotals() {
+    let totalHTBrut = 0;
+    let totalTVA = 0;
+
+    const blocks = document.querySelectorAll('#blocksContainer .product-block');
+
+    blocks.forEach(block => {
+        const q = parseFloat(block.querySelector('[name*="[quantite]"]')?.value) || 1;
+        const p = parseFloat(block.querySelector('[name*="[prix_ht]"]')?.value) || 0;
+        const remise = parseFloat(block.querySelector('[name*="[remise]"]')?.value) || 0;
+        const tva = parseFloat(block.querySelector('[name*="[tva]"]')?.value) || 0;
+
+        const htBrut = q * p;
+        const montantRemise = htBrut * (remise / 100);
+        const htNet = htBrut - montantRemise;
+        const montantTVA = htNet * (tva / 100);
+        const ttc = htNet + montantTVA;
+
+        const ttcInput = block.querySelector('[name*="[total_ttc]"]');
+        if (ttcInput) ttcInput.value = ttc.toFixed(2);
+
+        const tvaMontantInput = block.querySelector('[name*="[montant_tva]"]');
+        if (tvaMontantInput) tvaMontantInput.value = montantTVA.toFixed(2);
+
+        totalHTBrut += htBrut;
+        totalTVA += montantTVA;
+    });
+
+    const remiseGlobaleTaux = parseFloat(document.querySelector('[name="remise_globale"]')?.value) || 0;
+    const montantRemiseGlobale = totalHTBrut * (remiseGlobaleTaux / 100);
+    const htApresRemise = totalHTBrut - montantRemiseGlobale;
+
+    const retenueSourceTaux = parseFloat(document.querySelector('[name="retenue_source_globale"]')?.value) || 0;
+    const retenueGarantieTaux = parseFloat(document.querySelector('[name="retenue_garantie_globale"]')?.value) || 0;
+
+    const montantRetenueSource = htApresRemise * (retenueSourceTaux / 100);
+    const montantRetenueGarantie = htApresRemise * (retenueGarantieTaux / 100);
+
+    const totalTTC = htApresRemise + totalTVA - montantRetenueSource - montantRetenueGarantie;
+
+    const totalHTInput = document.querySelector('[name="total_ht"]');
+    if (totalHTInput) totalHTInput.value = totalHTBrut.toFixed(2);
+
+    const totalRemiseInput = document.querySelector('[name="total_remise"]');
+    if (totalRemiseInput) totalRemiseInput.value = montantRemiseGlobale.toFixed(2);
+
+    const totalTVAInput = document.querySelector('[name="total_tva"]');
+    if (totalTVAInput) totalTVAInput.value = totalTVA.toFixed(2);
+
+    const totalRetenueSourceInput = document.querySelector('[name="total_retenue_source"]');
+    if (totalRetenueSourceInput) totalRetenueSourceInput.value = montantRetenueSource.toFixed(2);
+
+    const totalRetenueGarantieInput = document.querySelector('[name="total_retenue_garantie"]');
+    if (totalRetenueGarantieInput) totalRetenueGarantieInput.value = montantRetenueGarantie.toFixed(2);
+
+    const totalTTCInput = document.querySelector('[name="total_ttc"]');
+    if (totalTTCInput) totalTTCInput.value = totalTTC.toFixed(2);
+
+    const labelRemise = document.getElementById('label-remise-globale');
+    if (labelRemise) labelRemise.textContent = 'Remise globale (' + remiseGlobaleTaux + '%) :';
+
+    const labelRetenueSource = document.getElementById('label-retenue-source');
+    if (labelRetenueSource) labelRetenueSource.textContent = 'Retenue à la source (' + retenueSourceTaux + '%) :';
+
+    const labelRetenueGarantie = document.getElementById('label-retenue-garantie');
+    if (labelRetenueGarantie) labelRetenueGarantie.textContent = 'Retenue de garantie (' + retenueGarantieTaux + '%) :';
+}
+
+function attachProductListeners(block) {
+    block.querySelector('.deleteLigne')?.addEventListener('click', function() {
+        block.remove();
+        reindexBlocks();
+        calculateTotals();
+    });
+
+    const inputs = block.querySelectorAll('input[type="number"], select');
+    inputs.forEach(input => {
+        input.addEventListener('input', calculateTotals);
+        input.addEventListener('change', calculateTotals);
+    });
+}
+
+function attachSectionListeners(block) {
+    block.querySelector('.deleteSection')?.addEventListener('click', function() {
+        block.remove();
+        reindexBlocks();
+    });
+}
+
+function reindexBlocks() {
+    const container = document.getElementById('blocksContainer');
+    const productBlocks = container.querySelectorAll('.product-block');
+    const sectionBlocks = container.querySelectorAll('.section-block');
+
+    let productIndex = 0;
+    let sectionIndex = 0;
+
+    productBlocks.forEach(block => {
+        const inputs = block.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            const name = input.getAttribute('name');
+            if (name && name.includes('produits[')) {
+                input.setAttribute('name', name.replace(/produits\[\d+\]/, 'produits[' + productIndex + ']'));
+            }
+        });
+        productIndex++;
+    });
+
+    sectionBlocks.forEach(block => {
+        const title = block.querySelector('h5');
+        if (title) title.innerHTML = '<i class="fa-solid fa-align-left"></i> Section ' + (sectionIndex + 1);
+        
+        const textarea = block.querySelector('textarea');
+        if (textarea) {
+            textarea.setAttribute('name', 'sections[' + sectionIndex + '][contenu]');
+        }
+        sectionIndex++;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('blocksContainer');
+    
+    if (container && typeof Sortable !== 'undefined') {
+        new Sortable(container, {
+            animation: 150,
+            handle: '.fa-grip-vertical, .sortable-block',
+            ghostClass: 'sortable-ghost',
+            onEnd: function() {
+                reindexBlocks();
+            }
+        });
+    }
+
+    const globalInputs = document.querySelectorAll('[name="remise_globale"], [name="retenue_source_globale"], [name="retenue_garantie_globale"]');
+    globalInputs.forEach(input => {
+        input.addEventListener('input', calculateTotals);
+        input.addEventListener('change', calculateTotals);
+    });
+
+    document.getElementById('addLigne')?.addEventListener('click', function() {
+        const index = container.querySelectorAll('.product-block').length;
+        const newBlock = createProductBlock(index);
+        container.appendChild(newBlock);
+        attachProductListeners(newBlock);
+    });
+
+    document.getElementById('addSectionBtn')?.addEventListener('click', function() {
+        sectionCount++;
+        const newBlock = createSectionBlock(sectionCount);
+        container.appendChild(newBlock);
+        attachSectionListeners(newBlock);
+    });
+
+   document.getElementById('btn-save-draft')?.addEventListener('click', async function() {
+    const form = document.getElementById('form_facture');
+    const formData = new FormData(form);
+
+    // Effacer les erreurs précédentes
+    document.querySelectorAll('.error').forEach(el => el.textContent = '');
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest' // ✅ TRÈS IMPORTANT
+            }
+        });
+
+        // ✅ Vérifier le Content-Type avant de parser
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            console.error('Response is not JSON:', contentType);
+            const text = await response.text();
+            console.error('Response body:', text.substring(0, 500));
+            throw new Error('Le serveur n\'a pas renvoyé de JSON. Vérifiez la console.');
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            factureId = result.id; // ✅ 'id' au lieu de 'factureId'
+            alert('✅ Facture enregistrée avec succès !');
+        } else {
+            // ✅ Afficher les erreurs de validation
+            if (result.errors) {
+                Object.keys(result.errors).forEach(field => {
+                    const input = document.querySelector(`[name="${field}"]`);
+                    const errorDiv = input?.nextElementSibling;
+                    if (errorDiv && errorDiv.classList.contains('error')) {
+                        errorDiv.textContent = result.errors[field];
+                    }
+                });
+                alert('❌ Veuillez corriger les erreurs dans le formulaire');
+            } else {
+                alert('❌ Erreur : ' + (result.message || result.error || 'Erreur inconnue'));
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Erreur lors de l\'enregistrement : ' + error.message);
+    }
+});
+    document.getElementById('btn-open-modal')?.addEventListener('click', function() {
+        if (!factureId) {
+            alert('⚠️ Veuillez d\'abord enregistrer la facture');
+            return;
+        }
+
+        document.getElementById('modal-reference').textContent = 
+            document.querySelector('[name="reference"]')?.value || '-';
+        
+        const tierSelect = document.querySelector('[name="tier"]');
+        document.getElementById('modal-tier').textContent = 
+            tierSelect.options[tierSelect.selectedIndex]?.text || '-';
+        
+        document.getElementById('modal-date-creation').textContent = 
+            document.querySelector('[name="date_creation"]')?.value || '-';
+        
+        document.getElementById('modal-objet').textContent = 
+            document.querySelector('[name="objet"]')?.value || '-';
+
+        const devise = document.querySelector('[name="devise"]')?.value || 'MAD';
+
+        document.getElementById('modal-total-ht').textContent = 
+            (document.querySelector('[name="total_ht"]')?.value || '0.00') + ' ' + devise;
+        
+        document.getElementById('modal-total-remise').textContent = 
+            (document.querySelector('[name="total_remise"]')?.value || '0.00') + ' ' + devise;
+        
+        document.getElementById('modal-total-tva').textContent = 
+            (document.querySelector('[name="total_tva"]')?.value || '0.00') + ' ' + devise;
+        
+        document.getElementById('modal-total-ttc').textContent = 
+            (document.querySelector('[name="total_ttc"]')?.value || '0.00') + ' ' + devise;
+
+        document.getElementById('modal-btn-pdf').href = '/facture/' + factureId + '/pdf';
+        
+        if (typeof bootstrap !== 'undefined') {
+            myModal = new bootstrap.Modal(document.getElementById('factureResumeModal'));
+            myModal.show();
+        }
+    });
+document.getElementById('modal-btn-email')?.addEventListener('click', async function() {
+    if (!factureId) {
+        alert("⚠️ Vous devez d'abord enregistrer la facture avant d'envoyer l'email.");
+        return;
+    }
+
+    try {
+        const response = await fetch(`/facture/${factureId}/send-email`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+            const text = await response.text();
+            console.error("Réponse non JSON :", text.substring(0, 200));
+            alert("❌ Le serveur n’a pas renvoyé de réponse valide. Vérifie la console !");
+            return;
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('✅ Email envoyé avec succès : ' + result.message);
+        } else {
+            alert('❌ Erreur : ' + result.message);
+        }
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('❌ Erreur lors de l’envoi de l’email.');
+    }
+});
+
+
+
+    document.getElementById('modal-btn-print')?.addEventListener('click', function() {
+        if (!factureId) return;
+        window.open('/facture/' + factureId + '/pdf', '_blank');
+        setTimeout(() => window.print(), 500);
+    });
+
+    calculateTotals();
+});
+
+</script>
+{% endblock %}

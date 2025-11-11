@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # This file is the entry point to configure your own services.
 # Files in the packages/ subdirectory configure your dependencies.
 
@@ -18,3 +19,39 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+=======
+# config/services.yaml
+parameters:
+    mailer_from: 'elhantatiichraq16@gmail.com'
+
+services:
+    # Configuration par défaut pour les services
+    _defaults:
+        autowire: true      # Injection automatique des dépendances
+        autoconfigure: true # Enregistre automatiquement les services comme commandes, subscribers, etc.
+
+    # Bind par défaut si un constructeur demande $session (optionnel)
+    # bind:
+    #     $session: '@session' 
+
+    # Rendre toutes les classes dans src/ disponibles comme services
+    App\:
+        resource: '../src/*'
+        exclude: '../src/{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
+
+    # Déclaration des controllers comme services
+    App\Controller\:
+        resource: '../src/Controller'
+        tags: ['controller.service_arguments']
+        autowire: true
+
+    # Services spécifiques
+    App\Service\Ventes\ValidationForm:
+        arguments:
+            $validationService: '@App\Service\Ventes\ValidationService'
+            $globalService: '@App\Service\GlobalService'
+            $requestStack: '@request_stack' # <- Correction ici
+
+    App\Service\Ventes\ValidationService: ~
+    App\Service\GlobalService: ~
+>>>>>>> e7a4decc1af809cb329bcab97a5b7e0b1153b252
